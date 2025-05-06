@@ -14,7 +14,7 @@ USE_FLOAT16 = False  # Czy używać niższej precyzji na GPU (szybsze, ale mniej
 # Parametry gry
 WINDOW_WIDTH = 640
 WINDOW_HEIGHT = 480
-BLOCK_SIZE = 20
+BLOCK_SIZE = 40
 GAME_SPEED = 20
 
 # Parametry bufora doświadczeń

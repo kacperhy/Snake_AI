@@ -42,7 +42,7 @@ def main():
     setup_directories()
     
     # Inicjalizacja gry
-    game = SnakeGame(width=WINDOW_WIDTH, height=WINDOW_HEIGHT, block_size=BLOCK_SIZE)
+    game = SnakeGame()
     
     # Parametry agenta
     state_size = 11  # Liczba cech w reprezentacji stanu
@@ -65,11 +65,13 @@ def main():
     print("2. Trenuj nowy model (tryb CPU)")
     print("3. Trenuj nowy model (tryb hybrydowy - zoptymalizowany)")
     print("4. Zmień ustawienia sprzętowe")
-    print("5. Wyjdź")
+    print("5. Kontynuuj trening istniejącego modelu")
+    print("6. Wyjście")
+    print("===============================================")
     
-    choice = input("\nWybierz opcję (1-5): ")
+    wybor = input("\nWybierz opcję (1-5): ")
     
-    if choice == '1':
+    if wybor == '1':
         # Wczytywanie istniejącego modelu
         print("\nDostępne modele:")
         
@@ -112,7 +114,7 @@ def main():
                 delay = int(input("Opóźnienie między krokami (ms, 0-500): ") or "100")
                 test_agent(agent, game, n_games, delay)
     
-    elif choice == '2':
+    elif wybor == '2':
         # Trenowanie nowego modelu (tylko CPU)
         # Wyłączamy GPU dla tego trybu, nawet jeśli jest dostępne
         import config
@@ -142,7 +144,7 @@ def main():
         delay = int(input("Opóźnienie między krokami (ms, 0-500): ") or "100")
         test_agent(agent, game, n_games, delay)
     
-    elif choice == '3':
+    elif wybor == '3':
         # Trenowanie nowego modelu (tryb hybrydowy - zoptymalizowany)
         n_episodes = int(input("\nPodaj liczbę epizodów treningu: ") or "1000")
         save_interval = int(input("Co ile epizodów zapisywać model: ") or "100")
@@ -170,7 +172,7 @@ def main():
         delay = int(input("Opóźnienie między krokami (ms, 0-500): ") or "100")
         test_agent(agent, game, n_games, delay)
     
-    elif choice == '4':
+    elif wybor == '4':
         # Zmiana ustawień sprzętowych
         import config
         
@@ -209,7 +211,84 @@ def main():
         input("\nNaciśnij Enter, aby wrócić do menu głównego...")
         main()
     
-    elif choice == '5':
+    elif wybor == '5':
+        # Kontynuacja treningu istniejącego modelu
+        print("\nDostępne modele:")
+    
+        # Inicjalizacja agenta DQN
+        agent = DQNAgent(state_size, action_size, HIDDEN_SIZE)
+    
+        # Wyświetlenie listy dostępnych modeli
+        models = get_available_models()
+    
+        if models:
+            for i, model in enumerate(models):
+                print(f"{i+1}. {model}")
+        
+            model_idx = input("\nWybierz numer modelu (lub naciśnij Enter, aby wpisać własną nazwę pliku): ")
+        
+            if model_idx.isdigit() and 1 <= int(model_idx) <= len(models):
+                file_name = os.path.join(MODELS_DIR, models[int(model_idx)-1])
+            else:
+                file_name = input("Podaj ścieżkę do pliku modelu: ")
+        
+            if agent.load(file_name):
+                # Wybór trybu treningu
+                print("\nWybierz tryb kontynuacji treningu:")
+                print("1. Tryb CPU")
+                print("2. Tryb hybrydowy (GPU jeśli dostępne)")
+                train_mode = input("Wybierz tryb (1-2): ")
+            
+                # Parametry kontynuacji treningu
+                n_episodes = int(input("\nPodaj liczbę epizodów treningu: ") or "100")
+                save_interval = int(input("Co ile epizodów zapisywać model: ") or "10")
+                force_device = None
+            
+                # Wybór urządzenia, jeśli użytkownik chce zmienić
+                if input("Czy chcesz wymusić konkretne urządzenie? (t/n): ").lower() == 't':
+                    if torch.cuda.is_available():
+                        device_wybor = input("Wybierz urządzenie (cpu/gpu): ").lower()
+                        if device_wybor in ['gpu', 'cuda']:
+                            force_device = 'cuda'
+                        else:
+                            force_device = 'cpu'
+                    else:
+                        print("GPU nie jest dostępne. Używam CPU.")
+                        force_device = 'cpu'
+            
+                # Aktualizacja parametrów uczenia
+                update_params = input("Czy chcesz zaktualizować parametry uczenia? (t/n): ").lower() == 't'
+            
+                # Kontynuacja treningu
+                if train_mode == '1':
+                    # Tryb CPU
+                    train_function = train_cpu_only
+                    scores, eps_history = agent.continue_training(
+                        train_function, game, n_episodes=n_episodes, 
+                        save_interval=save_interval, force_device=force_device,
+                        update_learning_params=update_params
+                    )
+                else:
+                    # Tryb hybrydowy
+                    n_parallel = int(input(f"Podaj liczbę równoległych gier (zalecane: {CPU_THREAD_COUNT}-16): ") or str(CPU_THREAD_COUNT))
+                    train_function = train_hybrid
+                    scores, eps_history = agent.continue_training(
+                        train_function, game_params, n_episodes=n_episodes, 
+                        save_interval=save_interval, force_device=force_device,
+                        update_learning_params=update_params, n_parallel=n_parallel
+                    )
+            
+                # Wizualizacja wyników treningu
+                plot_results(scores, eps_history)
+            
+                # Test wytrenowanego agenta
+                n_games = int(input("\nPodaj liczbę gier testowych: ") or "5")
+                delay = int(input("Opóźnienie między krokami (ms, 0-500): ") or "100")
+                test_agent(agent, game, n_games, delay)
+        else:
+            print("Brak dostępnych modeli. Najpierw wytrenuj jakiś model.")
+
+    elif wybor == '6':
         print("Wyjście z programu.")
     
     else:

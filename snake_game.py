@@ -6,6 +6,10 @@ import pygame
 import random
 import numpy as np
 from enum import Enum
+from config import (
+    USE_GPU, USE_FLOAT16, CPU_THREAD_COUNT, WINDOW_WIDTH, 
+    WINDOW_HEIGHT, BLOCK_SIZE, GAME_SPEED, HIDDEN_SIZE, MODELS_DIR
+)
 
 # Definicja kolorów
 WHITE = (255, 255, 255)
@@ -24,12 +28,12 @@ class Direction(Enum):
 
 class SnakeGame:
     """Pełna implementacja gry Snake z interfejsem graficznym do testowania."""
-    def __init__(self, width=640, height=480, block_size=20):
+    def __init__(self):
         # Inicjalizacja parametrów gry
-        self.width = width
-        self.height = height
-        self.block_size = block_size
-        self.display = pygame.display.set_mode((width, height))
+        self.width = WINDOW_WIDTH
+        self.height = WINDOW_HEIGHT
+        self.block_size = BLOCK_SIZE
+        self.display = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
         pygame.display.set_caption('Snake AI - PyTorch')
         self.clock = pygame.time.Clock()
         self.reset()

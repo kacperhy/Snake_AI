@@ -311,3 +311,99 @@ class DQNAgent:
         except Exception as e:
             print(f"Wystąpił błąd podczas wczytywania modelu: {e}")
             return False
+    def continue_training(self, train_function, game_params, n_episodes=100, save_interval=10, 
+                      force_device=None, update_learning_params=False, **train_kwargs):
+        """
+        Kontynuuje trening istniejącego modelu z możliwością zmiany urządzenia obliczeniowego.
+    
+        Args:
+        train_function: Funkcja trenująca, która będzie używana (train_hybrid lub train_cpu_only)
+        game_params: Parametry dla gry
+        n_episodes: Liczba epizodów do kontynuacji treningu
+        save_interval: Co ile epizodów zapisywać model
+        force_device: Jeśli podano, wymusza użycie określonego urządzenia ('cpu' lub 'cuda')
+        update_learning_params: Czy aktualizować parametry uczenia (gamma, epsilon, itp.)
+        **train_kwargs: Dodatkowe parametry dla funkcji trenującej
+    
+        Returns:
+        tuple: Para (wyniki, historia epsilon) z kontynuowanego treningu
+     """
+    # Zapamiętaj oryginalne urządzenie
+        original_device = self.device
+    
+    # Obsługa wymuszonego urządzenia
+        if force_device:
+            if force_device == 'cuda' and not torch.cuda.is_available():
+                print("UWAGA: GPU nie jest dostępne. Używam CPU.")
+                force_device = 'cpu'
+        
+            if force_device in ['cpu', 'cuda']:
+                new_device = torch.device(force_device)
+                if new_device != self.device:
+                    print(f"Przenoszenie modelu z {self.device} na {new_device}...")
+                
+                    # Przenieś modele na nowe urządzenie
+                    self.device = new_device
+                    self.model = self.model.to(new_device)
+                    self.target_model = self.target_model.to(new_device)
+                
+                # Obsługa precyzji dla GPU
+                    if new_device.type == 'cuda' and USE_FLOAT16:
+                        print("Konwertuję model do half precision (float16)...")
+                        self.model = self.model.half()
+                        self.target_model = self.target_model.half()
+                        self.dtype = torch.float16
+                    elif new_device.type == 'cpu' and self.dtype == torch.float16:
+                        print("Konwertuję model do full precision (float32)...")
+                        self.model = self.model.float()
+                        self.target_model = self.target_model.float()
+                        self.dtype = torch.float32
+                    
+                    # Zaktualizuj optymalizator
+                    if new_device.type == 'cuda':
+                        lr = self.optimizer.param_groups[0]['lr']
+                        self.optimizer = optim.AdamW(self.model.parameters(), lr=lr, weight_decay=1e-5)
+                    else:
+                        lr = self.optimizer.param_groups[0]['lr']
+                        self.optimizer = optim.Adam(self.model.parameters(), lr=lr)
+    
+        # Aktualizacja parametrów uczenia, jeśli wymagane
+        if update_learning_params:
+            print("Aktualizuję parametry uczenia...")
+            # Tutaj można dodać dialog z użytkownikiem o parametrach lub wczytać je z konfiguracji
+            self.gamma = float(input(f"Podaj współczynnik dyskontowania (obecny: {self.gamma}): ") or self.gamma)
+            self.epsilon = float(input(f"Podaj początkowy współczynnik eksploracji (obecny: {self.epsilon}): ") or self.epsilon)
+            self.epsilon_min = float(input(f"Podaj minimalny współczynnik eksploracji (obecny: {self.epsilon_min}): ") or self.epsilon_min)
+            self.epsilon_decay = float(input(f"Podaj współczynnik zmniejszania eksploracji (obecny: {self.epsilon_decay}): ") or self.epsilon_decay)
+            self.batch_size = int(input(f"Podaj rozmiar batcha (obecny: {self.batch_size}): ") or self.batch_size)
+        
+        # Dostosuj rozmiar batcha do urządzenia
+        if self.device.type == 'cuda':
+            self.batch_size = max(self.batch_size, 128)  # Minimum 128 dla GPU
+        else:
+            self.batch_size = min(self.batch_size, 64)  # Maximum 64 dla CPU
+    
+        print(f"Kontynuuję trening na urządzeniu: {self.device}")
+        print(f"Gamma: {self.gamma}, Epsilon: {self.epsilon}, Batch size: {self.batch_size}")
+        print(f"Trening przez {n_episodes} epizodów...")
+    
+        # Uruchom funkcję trenującą
+        try:
+            scores, eps_history = train_function(self, game_params, 
+                                                n_episodes=n_episodes, 
+                                                save_interval=save_interval, 
+                                                **train_kwargs)
+        
+            print(f"Kontynuacja treningu zakończona. Model zapisany.")
+            return scores, eps_history
+        
+        except Exception as e:
+            print(f"Błąd podczas kontynuacji treningu: {e}")
+            # W razie błędu przywróć oryginalne urządzenie
+            if self.device != original_device:
+                print(f"Przywracam model na oryginalne urządzenie: {original_device}")
+                self.device = original_device
+                self.model = self.model.to(original_device)
+                self.target_model = self.target_model.to(original_device)
+            raise e
+    
