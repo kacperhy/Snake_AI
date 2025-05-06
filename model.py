@@ -13,19 +13,19 @@ class QNetwork(nn.Module):
     Implementacja sieci neuronowej dla Deep Q-Network.
     
     Atrybuty:
-        input_size (int): Rozmiar wektora wejściowego.
-        hidden_size (int): Liczba neuronów w warstwie ukrytej.
-        output_size (int): Liczba możliwych akcji.
+        rozmiar_wejścia (int): Rozmiar wektora wejściowego.
+        rozmiar_ukryty (int): Liczba neuronów w warstwie ukrytej.
+        rozmiar_wyjścia (int): Liczba możliwych akcji.
     """
-    def __init__(self, input_size, hidden_size, output_size):
+    def __init__(self, rozmiar_wejścia, rozmiar_ukryty, rozmiar_wyjścia):
         super(QNetwork, self).__init__()
         # Głębsza sieć z większą liczbą warstw
-        self.fc1 = nn.Linear(input_size, hidden_size)
+        self.fc1 = nn.Linear(rozmiar_wejścia, rozmiar_ukryty)
         self.dropout1 = nn.Dropout(0.2)  # Dropout dla regularyzacji (zapobiega przeuczeniu)
-        self.fc2 = nn.Linear(hidden_size, hidden_size)
+        self.fc2 = nn.Linear(rozmiar_ukryty, rozmiar_ukryty)
         self.dropout2 = nn.Dropout(0.2)
-        self.fc3 = nn.Linear(hidden_size, hidden_size // 2)
-        self.fc4 = nn.Linear(hidden_size // 2, output_size)
+        self.fc3 = nn.Linear(rozmiar_ukryty, rozmiar_ukryty // 2)
+        self.fc4 = nn.Linear(rozmiar_ukryty // 2, rozmiar_wyjścia)
         
         # Inicjalizacja wag dla lepszej zbieżności
         torch.nn.init.kaiming_uniform_(self.fc1.weight)

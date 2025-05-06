@@ -9,28 +9,28 @@ from model import QNetwork
 from agent import DQNAgent
 from training import train_hybrid, train_cpu_only, plot_results, test_agent
 from config import (
-    USE_GPU, USE_FLOAT16, CPU_THREAD_COUNT, WINDOW_WIDTH, 
-    WINDOW_HEIGHT, BLOCK_SIZE, GAME_SPEED, HIDDEN_SIZE, MODELS_DIR
+    UŻYJ_GPU, UŻYJ_FLOAT16, LICZBA_WĄTKÓW_CPU, SZEROKOŚĆ_OKNA, 
+    WYSOKOŚĆ_OKNA, ROZMIAR_BLOKU, PRĘDKOŚĆ_GRY, ROZMIAR_UKRYTY, KATALOG_MODELI
 )
 
 
-def setup_directories():
+def przygotuj_katalogi():
     """Tworzy potrzebne katalogi, jeśli nie istnieją."""
-    if not os.path.exists(MODELS_DIR):
-        os.makedirs(MODELS_DIR)
-        print(f"Utworzono katalog '{MODELS_DIR}' do przechowywania modeli.")
+    if not os.path.exists(KATALOG_MODELI):
+        os.makedirs(KATALOG_MODELI)
+        print(f"Utworzono katalog '{KATALOG_MODELI}' do przechowywania modeli.")
     
     if not os.path.exists('results'):
         os.makedirs('results')
         print("Utworzono katalog 'results' do przechowywania wyników.")
 
 
-def get_available_models():
+def pobierz_dostępne_modele():
     """Zwraca listę dostępnych modeli."""
-    if not os.path.exists(MODELS_DIR):
+    if not os.path.exists(KATALOG_MODELI):
         return []
     
-    return [f for f in os.listdir(MODELS_DIR) if f.endswith('.pth')]
+    return [f for f in os.listdir(KATALOG_MODELI) if f.endswith('.pth')]
 
 
 def main():
@@ -39,28 +39,28 @@ def main():
     pygame.init()
     
     # Utworzenie katalogów
-    setup_directories()
+    przygotuj_katalogi()
     
     # Inicjalizacja gry
     game = SnakeGame()
     
     # Parametry agenta
-    state_size = 11  # Liczba cech w reprezentacji stanu
-    action_size = 3  # Liczba możliwych akcji (prosto, w prawo, w lewo)
+    rozmiar_stanu = 11  # Liczba cech w reprezentacji stanu
+    rozmiar_akcji = 3  # Liczba możliwych akcji (prosto, w prawo, w lewo)
     
     # Parametry dla zrównoleglonego uczenia
-    game_params = {
-        'width': WINDOW_WIDTH,
-        'height': WINDOW_HEIGHT,
-        'block_size': BLOCK_SIZE
+    parametry_gry = {
+        'szerokość': SZEROKOŚĆ_OKNA,
+        'wysokość': WYSOKOŚĆ_OKNA,
+        'rozmiar_bloku': ROZMIAR_BLOKU
     }
     
     # Menu wyboru
     print("\n===== Snake AI z Deep Q-Network (PyTorch) =====")
     print("Wersja zoptymalizowana dla CPU i GPU")
-    print(f"Używanie GPU: {'TAK' if USE_GPU else 'NIE'}")
-    print(f"Precyzja float16: {'TAK' if USE_FLOAT16 and USE_GPU else 'NIE'}")
-    print(f"Liczba wątków CPU: {CPU_THREAD_COUNT}")
+    print(f"Używanie GPU: {'TAK' if UŻYJ_GPU else 'NIE'}")
+    print(f"Precyzja float16: {'TAK' if UŻYJ_FLOAT16 and UŻYJ_GPU else 'NIE'}")
+    print(f"Liczba wątków CPU: {LICZBA_WĄTKÓW_CPU}")
     print("\n1. Wczytaj istniejący model")
     print("2. Trenuj nowy model (tryb CPU)")
     print("3. Trenuj nowy model (tryb hybrydowy - zoptymalizowany)")
@@ -76,136 +76,136 @@ def main():
         print("\nDostępne modele:")
         
         # Inicjalizacja agenta DQN
-        agent = DQNAgent(state_size, action_size, HIDDEN_SIZE)
+        agent = DQNAgent(rozmiar_stanu, rozmiar_akcji, ROZMIAR_UKRYTY)
         
         # Wyświetlenie listy dostępnych modeli
-        models = get_available_models()
+        modele = pobierz_dostępne_modele()
         
-        if models:
-            for i, model in enumerate(models):
+        if modele:
+            for i, model in enumerate(modele):
                 print(f"{i+1}. {model}")
             
-            model_idx = input("\nWybierz numer modelu (lub naciśnij Enter, aby wpisać własną nazwę pliku): ")
+            indeks_modelu = input("\nWybierz numer modelu (lub naciśnij Enter, aby wpisać własną nazwę pliku): ")
             
-            if model_idx.isdigit() and 1 <= int(model_idx) <= len(models):
-                file_name = os.path.join(MODELS_DIR, models[int(model_idx)-1])
+            if indeks_modelu.isdigit() and 1 <= int(indeks_modelu) <= len(modele):
+                nazwa_pliku = os.path.join(KATALOG_MODELI, modele[int(indeks_modelu)-1])
             else:
-                file_name = input("Podaj ścieżkę do pliku modelu: ")
+                nazwa_pliku = input("Podaj ścieżkę do pliku modelu: ")
             
-            if agent.load(file_name):
+            if agent.load(nazwa_pliku):
                 # Testowanie modelu
-                n_games = int(input("\nPodaj liczbę gier testowych: ") or "5")
-                delay = int(input("Opóźnienie między krokami (ms, 0-500): ") or "100")
-                test_agent(agent, game, n_games, delay)
+                liczba_gier = int(input("\nPodaj liczbę gier testowych: ") or "5")
+                opóźnienie = int(input("Opóźnienie między krokami (ms, 0-500): ") or "100")
+                test_agent(agent, game, liczba_gier, opóźnienie)
         else:
             print("Brak dostępnych modeli.")
             if input("Czy chcesz trenować nowy model? (t/n): ").lower() == 't':
                 # Trenowanie agenta
-                n_episodes = int(input("\nPodaj liczbę epizodów treningu: ") or "1000")
-                save_interval = int(input("Co ile epizodów zapisywać model: ") or "100")
+                liczba_epizodów = int(input("\nPodaj liczbę epizodów treningu: ") or "1000")
+                interwał_zapisu = int(input("Co ile epizodów zapisywać model: ") or "100")
                 
-                scores, eps_history = train_hybrid(agent, game_params, n_episodes, save_interval=save_interval)
+                wyniki, historia_ep = train_hybrid(agent, parametry_gry, liczba_epizodów, interwał_zapisu=interwał_zapisu)
                 
                 # Wizualizacja wyników treningu
-                plot_results(scores, eps_history)
+                plot_results(wyniki, historia_ep)
                 
                 # Test wytrenowanego agenta
-                n_games = int(input("\nPodaj liczbę gier testowych: ") or "5")
-                delay = int(input("Opóźnienie między krokami (ms, 0-500): ") or "100")
-                test_agent(agent, game, n_games, delay)
+                liczba_gier = int(input("\nPodaj liczbę gier testowych: ") or "5")
+                opóźnienie = int(input("Opóźnienie między krokami (ms, 0-500): ") or "100")
+                test_agent(agent, game, liczba_gier, opóźnienie)
     
     elif wybor == '2':
         # Trenowanie nowego modelu (tylko CPU)
         # Wyłączamy GPU dla tego trybu, nawet jeśli jest dostępne
         import config
-        old_use_gpu = config.USE_GPU
-        config.USE_GPU = False
+        stare_użyj_gpu = config.UŻYJ_GPU
+        config.UŻYJ_GPU = False
         
-        n_episodes = int(input("\nPodaj liczbę epizodów treningu: ") or "1000")
-        save_interval = int(input("Co ile epizodów zapisywać model: ") or "100")
+        liczba_epizodów = int(input("\nPodaj liczbę epizodów treningu: ") or "1000")
+        interwał_zapisu = int(input("Co ile epizodów zapisywać model: ") or "100")
         
         # Inicjalizacja agenta DQN (wymuszamy CPU)
-        agent = DQNAgent(state_size, action_size, HIDDEN_SIZE)
+        agent = DQNAgent(rozmiar_stanu, rozmiar_akcji, ROZMIAR_UKRYTY)
         
         print("\nRozpoczynanie treningu na CPU...")
         print("Ten tryb używa pojedynczej gry i wizualizacji.")
         
         # Trenowanie agenta
-        scores, eps_history = train_cpu_only(agent, game, n_episodes, save_interval=save_interval)
+        wyniki, historia_ep = train_cpu_only(agent, game, liczba_epizodów, interwał_zapisu=interwał_zapisu)
         
         # Przywracamy poprzednie ustawienie GPU
-        config.USE_GPU = old_use_gpu
+        config.UŻYJ_GPU = stare_użyj_gpu
         
         # Wizualizacja wyników treningu
-        plot_results(scores, eps_history)
+        plot_results(wyniki, historia_ep)
         
         # Test wytrenowanego agenta
-        n_games = int(input("\nPodaj liczbę gier testowych: ") or "5")
-        delay = int(input("Opóźnienie między krokami (ms, 0-500): ") or "100")
-        test_agent(agent, game, n_games, delay)
+        liczba_gier = int(input("\nPodaj liczbę gier testowych: ") or "5")
+        opóźnienie = int(input("Opóźnienie między krokami (ms, 0-500): ") or "100")
+        test_agent(agent, game, liczba_gier, opóźnienie)
     
     elif wybor == '3':
         # Trenowanie nowego modelu (tryb hybrydowy - zoptymalizowany)
-        n_episodes = int(input("\nPodaj liczbę epizodów treningu: ") or "1000")
-        save_interval = int(input("Co ile epizodów zapisywać model: ") or "100")
-        n_parallel = int(input(f"Podaj liczbę równoległych gier (zalecane: {CPU_THREAD_COUNT}-16): ") or str(CPU_THREAD_COUNT))
+        liczba_epizodów = int(input("\nPodaj liczbę epizodów treningu: ") or "1000")
+        interwał_zapisu = int(input("Co ile epizodów zapisywać model: ") or "100")
+        liczba_równoległych = int(input(f"Podaj liczbę równoległych gier (zalecane: {LICZBA_WĄTKÓW_CPU}-16): ") or str(LICZBA_WĄTKÓW_CPU))
         
         # Inicjalizacja agenta DQN
-        agent = DQNAgent(state_size, action_size, HIDDEN_SIZE)
+        agent = DQNAgent(rozmiar_stanu, rozmiar_akcji, ROZMIAR_UKRYTY)
         
-        print(f"\nRozpoczynanie treningu hybrydowego z {n_parallel} równoległymi grami...")
+        print(f"\nRozpoczynanie treningu hybrydowego z {liczba_równoległych} równoległymi grami...")
         print("Ten tryb nie wyświetla gry, co znacznie przyspiesza uczenie.")
-        if USE_GPU:
+        if UŻYJ_GPU:
             print("GPU zostanie użyte do trenowania sieci neuronowej.")
             print("Doświadczenia będą zbierane na CPU dla maksymalnej wydajności.")
         else:
             print("Trening będzie prowadzony wyłącznie na CPU.")
         
         # Trenowanie agenta w trybie hybrydowym
-        scores, eps_history = train_hybrid(agent, game_params, n_episodes, save_interval=save_interval, n_parallel=n_parallel)
+        wyniki, historia_ep = train_hybrid(agent, parametry_gry, liczba_epizodów, interwał_zapisu=interwał_zapisu, liczba_równoległych=liczba_równoległych)
         
         # Wizualizacja wyników treningu
-        plot_results(scores, eps_history)
+        plot_results(wyniki, historia_ep)
         
         # Test wytrenowanego agenta
-        n_games = int(input("\nPodaj liczbę gier testowych: ") or "5")
-        delay = int(input("Opóźnienie między krokami (ms, 0-500): ") or "100")
-        test_agent(agent, game, n_games, delay)
+        liczba_gier = int(input("\nPodaj liczbę gier testowych: ") or "5")
+        opóźnienie = int(input("Opóźnienie między krokami (ms, 0-500): ") or "100")
+        test_agent(agent, game, liczba_gier, opóźnienie)
     
     elif wybor == '4':
         # Zmiana ustawień sprzętowych
         import config
         
         print("\n--- Aktualne ustawienia ---")
-        print(f"Używanie GPU: {'TAK' if config.USE_GPU else 'NIE'}")
-        print(f"Precyzja float16: {'TAK' if config.USE_FLOAT16 and config.USE_GPU else 'NIE'}")
-        print(f"Liczba wątków CPU: {config.CPU_THREAD_COUNT}")
+        print(f"Używanie GPU: {'TAK' if config.UŻYJ_GPU else 'NIE'}")
+        print(f"Precyzja float16: {'TAK' if config.UŻYJ_FLOAT16 and config.UŻYJ_GPU else 'NIE'}")
+        print(f"Liczba wątków CPU: {config.LICZBA_WĄTKÓW_CPU}")
         
         if torch.cuda.is_available():
             use_gpu = input("\nCzy używać GPU do treningu? (t/n): ").lower()
-            config.USE_GPU = use_gpu == 't' or use_gpu == 'tak'
+            config.UŻYJ_GPU = use_gpu == 't' or use_gpu == 'tak'
             
-            if config.USE_GPU:
+            if config.UŻYJ_GPU:
                 use_fp16 = input("Czy używać niższej precyzji (float16) dla szybszego treningu? (t/n): ").lower()
-                config.USE_FLOAT16 = use_fp16 == 't' or use_fp16 == 'tak'
+                config.UŻYJ_FLOAT16 = use_fp16 == 't' or use_fp16 == 'tak'
         else:
             print("\nGPU nie jest dostępne na tym komputerze.")
-            config.USE_GPU = False
-            config.USE_FLOAT16 = False
+            config.UŻYJ_GPU = False
+            config.UŻYJ_FLOAT16 = False
         
-        cpu_threads = input(f"Podaj liczbę wątków CPU (aktualna: {config.CPU_THREAD_COUNT}): ")
+        cpu_threads = input(f"Podaj liczbę wątków CPU (aktualna: {config.LICZBA_WĄTKÓW_CPU}): ")
         if cpu_threads.isdigit() and int(cpu_threads) > 0:
-            config.CPU_THREAD_COUNT = int(cpu_threads)
+            config.LICZBA_WĄTKÓW_CPU = int(cpu_threads)
         
-        speed = input(f"Podaj szybkość gry [10-60] (aktualna: {config.GAME_SPEED}): ")
+        speed = input(f"Podaj szybkość gry [10-60] (aktualna: {config.PRĘDKOŚĆ_GRY}): ")
         if speed.isdigit() and 10 <= int(speed) <= 60:
-            config.GAME_SPEED = int(speed)
+            config.PRĘDKOŚĆ_GRY = int(speed)
         
         print("\n--- Nowe ustawienia ---")
-        print(f"Używanie GPU: {'TAK' if config.USE_GPU else 'NIE'}")
-        print(f"Precyzja float16: {'TAK' if config.USE_FLOAT16 and config.USE_GPU else 'NIE'}")
-        print(f"Liczba wątków CPU: {config.CPU_THREAD_COUNT}")
-        print(f"Szybkość gry: {config.GAME_SPEED}")
+        print(f"Używanie GPU: {'TAK' if config.UŻYJ_GPU else 'NIE'}")
+        print(f"Precyzja float16: {'TAK' if config.UŻYJ_FLOAT16 and config.UŻYJ_GPU else 'NIE'}")
+        print(f"Liczba wątków CPU: {config.LICZBA_WĄTKÓW_CPU}")
+        print(f"Szybkość gry: {config.PRĘDKOŚĆ_GRY}")
         
         # Powrót do menu głównego
         input("\nNaciśnij Enter, aby wrócić do menu głównego...")
@@ -216,23 +216,23 @@ def main():
         print("\nDostępne modele:")
     
         # Inicjalizacja agenta DQN
-        agent = DQNAgent(state_size, action_size, HIDDEN_SIZE)
+        agent = DQNAgent(rozmiar_stanu, rozmiar_akcji, ROZMIAR_UKRYTY)
     
         # Wyświetlenie listy dostępnych modeli
-        models = get_available_models()
+        modele = pobierz_dostępne_modele()
     
-        if models:
-            for i, model in enumerate(models):
+        if modele:
+            for i, model in enumerate(modele):
                 print(f"{i+1}. {model}")
         
-            model_idx = input("\nWybierz numer modelu (lub naciśnij Enter, aby wpisać własną nazwę pliku): ")
+            indeks_modelu = input("\nWybierz numer modelu (lub naciśnij Enter, aby wpisać własną nazwę pliku): ")
         
-            if model_idx.isdigit() and 1 <= int(model_idx) <= len(models):
-                file_name = os.path.join(MODELS_DIR, models[int(model_idx)-1])
+            if indeks_modelu.isdigit() and 1 <= int(indeks_modelu) <= len(modele):
+                nazwa_pliku = os.path.join(KATALOG_MODELI, modele[int(indeks_modelu)-1])
             else:
-                file_name = input("Podaj ścieżkę do pliku modelu: ")
+                nazwa_pliku = input("Podaj ścieżkę do pliku modelu: ")
         
-            if agent.load(file_name):
+            if agent.load(nazwa_pliku):
                 # Wybór trybu treningu
                 print("\nWybierz tryb kontynuacji treningu:")
                 print("1. Tryb CPU")
@@ -240,8 +240,8 @@ def main():
                 train_mode = input("Wybierz tryb (1-2): ")
             
                 # Parametry kontynuacji treningu
-                n_episodes = int(input("\nPodaj liczbę epizodów treningu: ") or "100")
-                save_interval = int(input("Co ile epizodów zapisywać model: ") or "10")
+                liczba_epizodów = int(input("\nPodaj liczbę epizodów treningu: ") or "100")
+                interwał_zapisu = int(input("Co ile epizodów zapisywać model: ") or "10")
                 force_device = None
             
                 # Wybór urządzenia, jeśli użytkownik chce zmienić
@@ -263,28 +263,28 @@ def main():
                 if train_mode == '1':
                     # Tryb CPU
                     train_function = train_cpu_only
-                    scores, eps_history = agent.continue_training(
-                        train_function, game, n_episodes=n_episodes, 
-                        save_interval=save_interval, force_device=force_device,
+                    wyniki, historia_ep = agent.continue_training(
+                        train_function, game, liczba_epizodów=liczba_epizodów, 
+                        interwał_zapisu=interwał_zapisu, force_device=force_device,
                         update_learning_params=update_params
                     )
                 else:
                     # Tryb hybrydowy
-                    n_parallel = int(input(f"Podaj liczbę równoległych gier (zalecane: {CPU_THREAD_COUNT}-16): ") or str(CPU_THREAD_COUNT))
+                    liczba_równoległych = int(input(f"Podaj liczbę równoległych gier (zalecane: {LICZBA_WĄTKÓW_CPU}-16): ") or str(LICZBA_WĄTKÓW_CPU))
                     train_function = train_hybrid
-                    scores, eps_history = agent.continue_training(
-                        train_function, game_params, n_episodes=n_episodes, 
-                        save_interval=save_interval, force_device=force_device,
-                        update_learning_params=update_params, n_parallel=n_parallel
+                    wyniki, historia_ep = agent.continue_training(
+                        train_function, parametry_gry, liczba_epizodów=liczba_epizodów, 
+                        interwał_zapisu=interwał_zapisu, force_device=force_device,
+                        update_learning_params=update_params, liczba_równoległych=liczba_równoległych
                     )
             
                 # Wizualizacja wyników treningu
-                plot_results(scores, eps_history)
+                plot_results(wyniki, historia_ep)
             
                 # Test wytrenowanego agenta
-                n_games = int(input("\nPodaj liczbę gier testowych: ") or "5")
-                delay = int(input("Opóźnienie między krokami (ms, 0-500): ") or "100")
-                test_agent(agent, game, n_games, delay)
+                liczba_gier = int(input("\nPodaj liczbę gier testowych: ") or "5")
+                opóźnienie = int(input("Opóźnienie między krokami (ms, 0-500): ") or "100")
+                test_agent(agent, game, liczba_gier, opóźnienie)
         else:
             print("Brak dostępnych modeli. Najpierw wytrenuj jakiś model.")
 
