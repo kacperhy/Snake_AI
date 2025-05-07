@@ -302,7 +302,7 @@ def testuj_agenta(agent, game, liczba_gier=5, opóźnienie=100):
         
         while not zakończone:
             # Agent wybiera akcję bez eksploracji
-            tensor_stanu = torch.tensor(stan, dtype=agent.dtype).unsqueeze(0).to(agent.device)
+            tensor_stanu = torch.tensor(stan, dtype=agent.typ_danych).unsqueeze(0).to(agent.device)
             with torch.no_grad():
                 wartości_q = agent.model(tensor_stanu)
             akcja = torch.argmax(wartości_q).item()

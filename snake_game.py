@@ -234,8 +234,8 @@ class SnakeGame:
         pygame.draw.rect(self.display, CZERWONY, pygame.Rect(self.jedzenie[0], self.jedzenie[1], self.rozmiar_bloku, self.rozmiar_bloku))
         
         # Wyświetlanie wyniku
-        czcionka = pygame.czcionka.SysFont('arial', 25)
-        tekst = czcionka.render(f"Wynik: {self.wynik}", True, BIAŁY)
+        font = pygame.font.SysFont('arial', 25)
+        tekst = font.render(f"Wynik: {self.wynik}", True, BIAŁY)
         self.display.blit(tekst, [0, 0])
         pygame.display.flip()
 

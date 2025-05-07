@@ -12,8 +12,8 @@ LICZBA_WĄTKÓW_CPU = 4  # Liczba wątków CPU dla obliczeń
 UŻYJ_FLOAT16 = False  # Czy używać niższej precyzji na GPU (szybsze, ale mniej dokładne)
 
 # Parametry gry
-SZEROKOŚĆ_OKNA = 640
-WYSOKOŚĆ_OKNA = 480
+SZEROKOŚĆ_OKNA = 320
+WYSOKOŚĆ_OKNA = 240
 ROZMIAR_BLOKU = 40
 PRĘDKOŚĆ_GRY = 20
 
@@ -25,7 +25,7 @@ ROZMIAR_UKRYTY = 256  # Rozmiar warstwy ukrytej
 WSPÓŁCZYNNIK_UCZENIA = 0.0003  # Współczynnik uczenia
 
 # Parametry treningu
-ROZMIAR_PARTII = 128  # Rozmiar batcha
+ROZMIAR_PARTII = 256  # Rozmiar batcha
 GAMMA = 0.98  # Współczynnik dyskontowania przyszłych nagród
 EPSILON_START = 1.0  # Początkowa wartość współczynnika eksploracji
 EPSILON_MIN = 0.01  # Minimalna wartość współczynnika eksploracji
