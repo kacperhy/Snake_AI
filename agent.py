@@ -11,73 +11,73 @@ import torch.optim as optim
 from collections import deque
 import threading
 from model import QNetwork
-from config import USE_GPU, USE_FLOAT16, EXPERIENCE_BUFFER_SIZE
+from config import UŻYJ_GPU, UŻYJ_FLOAT16, ROZMIAR_BUFORA_DOŚWIADCZEŃ
 
 #minimalne wymagania dla GPU
-class ExperienceBuffer:
+class BuforDoświadczeń:
     """
     Bufor doświadczeń z optymalizacjami dla szybkiego przetwarzania.
     
     Atrybuty:
-        capacity (int): Maksymalna liczba przechowywanych doświadczeń.
-        buffer (deque): Kolejka przechowująca doświadczenia.
+        pojemność (int): Maksymalna liczba przechowywanych doświadczeń.
+        bufor (deque): Kolejka przechowująca doświadczenia.
         device (torch.device): Urządzenie do obliczeń (CPU/GPU).
-        dtype (torch.dtype): Typ danych dla tensorów.
+        typ_danych (torch.typ_danych): Typ danych dla tensorów.
     """
-    def __init__(self, capacity=EXPERIENCE_BUFFER_SIZE):
-        self.buffer = deque(maxlen=capacity)
-        self.device = torch.device("cuda" if USE_GPU else "cpu")
-        self.dtype = torch.float16 if USE_FLOAT16 and USE_GPU else torch.float32
-        self.prefetched_batch = None
-        self.prefetch_lock = threading.Lock()
-        self.is_prefetching = False
+    def __init__(self, pojemność=ROZMIAR_BUFORA_DOŚWIADCZEŃ):
+        self.bufor = deque(maxlen=pojemność)
+        self.device = torch.device("cuda" if UŻYJ_GPU else "cpu")
+        self.typ_danych = torch.float16 if UŻYJ_FLOAT16 and UŻYJ_GPU else torch.float32
+        self.wstępnie_pobrany_batch = None
+        self.blokada_pobierania = threading.Lock()
+        self.czy_pobieranie_wstępne = False
     
-    def push(self, state, action, reward, next_state, done):
+    def dodaj(self, state, action, reward, next_state, done):
         """Dodaje nowe doświadczenie do bufora."""
-        self.buffer.append((state, action, reward, next_state, done))
+        self.bufor.append((state, action, reward, next_state, done))
     
-    def sample(self, batch_size):
+    def sample(self, rozmiar_partii):
         """Pobiera losową próbkę z bufora i konwertuje na tensory."""
-        if len(self.buffer) < batch_size:
+        if len(self.bufor) < rozmiar_partii:
             return None
             
         # Wybór losowej próbki
-        batch = random.sample(self.buffer, batch_size)
+        partia = random.sample(self.bufor, rozmiar_partii)
         
         # Rozpakowanie danych
-        states, actions, rewards, next_states, dones = zip(*batch)
+        stany, akcje, nagrody, następne_stany, zakończone = zip(*partia)
         
         # Konwersja na tensory (na CPU dla uniknięcia wąskich gardeł transferu)
-        states_tensor = torch.tensor(np.array(states), dtype=self.dtype).to(self.device)
-        actions_tensor = torch.tensor(actions, dtype=torch.long).to(self.device)
-        rewards_tensor = torch.tensor(rewards, dtype=self.dtype).to(self.device)
-        next_states_tensor = torch.tensor(np.array(next_states), dtype=self.dtype).to(self.device)
-        dones_tensor = torch.tensor(dones, dtype=torch.bool).to(self.device)
+        tensor_stanów = torch.tensor(np.array(stany), dtype=self.typ_danych).to(self.device)
+        tensor_akcji = torch.tensor(akcje, dtype=torch.long).to(self.device)
+        tensor_nagród = torch.tensor(nagrody, dtype=self.typ_danych).to(self.device)
+        tensor_następnych_stanów = torch.tensor(np.array(następne_stany), dtype=self.typ_danych).to(self.device)
+        tensor_zakończonych = torch.tensor(zakończone, dtype=torch.bool).to(self.device)
         
-        return states_tensor, actions_tensor, rewards_tensor, next_states_tensor, dones_tensor
+        return tensor_stanów, tensor_akcji, tensor_nagród, tensor_następnych_stanów, tensor_zakończonych
     
-    def prefetch_batch(self, batch_size):
-        """Wstępnie pobiera batch w osobnym wątku dla szybszego dostępu."""
-        if not self.is_prefetching and len(self.buffer) >= batch_size:
-            self.is_prefetching = True
-            threading.Thread(target=self._prefetch_batch_thread, args=(batch_size,)).start()
+    def pobierz_wstępnie_batch(self, rozmiar_partii):
+        """Wstępnie pobiera partia w osobnym wątku dla szybszego dostępu."""
+        if not self.czy_pobieranie_wstępne and len(self.bufor) >= rozmiar_partii:
+            self.czy_pobieranie_wstępne = True
+            threading.Thread(target=self._wątek_wstępnego_pobierania, args=(rozmiar_partii,)).start()
     
-    def _prefetch_batch_thread(self, batch_size):
-        """Wątek pobierający batch."""
-        batch = self.sample(batch_size)
-        with self.prefetch_lock:
-            self.prefetched_batch = batch
-            self.is_prefetching = False
+    def _wątek_wstępnego_pobierania(self, rozmiar_partii):
+        """Wątek pobierający partia."""
+        partia = self.sample(rozmiar_partii)
+        with self.blokada_pobierania:
+            self.wstępnie_pobrany_batch = partia
+            self.czy_pobieranie_wstępne = False
     
-    def get_prefetched_batch(self):
-        """Pobiera wcześniej pobrany batch lub tworzy nowy jeśli nie ma."""
-        with self.prefetch_lock:
-            batch = self.prefetched_batch
-            self.prefetched_batch = None
-        return batch
+    def pobierz_wstępnie_pobrany_batch(self):
+        """Pobiera wcześniej pobrany partia lub tworzy nowy jeśli nie ma."""
+        with self.blokada_pobierania:
+            partia = self.wstępnie_pobrany_batch
+            self.wstępnie_pobrany_batch = None
+        return partia
     
     def __len__(self):
-        return len(self.buffer)
+        return len(self.bufor)
 
 
 class DQNAgent:
@@ -85,50 +85,50 @@ class DQNAgent:
     Agent używający algorytmu Deep Q-Network z optymalizacjami.
     
     Atrybuty:
-        state_size (int): Wymiar wektora stanu.
-        action_size (int): Liczba możliwych akcji.
-        memory (ExperienceBuffer): Bufor przechowujący doświadczenia.
+        rozmiar_stanu (int): Wymiar wektora stanu.
+        rozmiar_akcji (int): Liczba możliwych akcji.
+        pamięć (BuforDoświadczeń): Bufor przechowujący doświadczenia.
         model (QNetwork): Główna sieć neuronowa.
-        target_model (QNetwork): Sieć docelowa do stabilizacji uczenia.
+        model_docelowy (QNetwork): Sieć docelowa do stabilizacji uczenia.
     """
-    def __init__(self, state_size, action_size, hidden_size=256, lr=0.0003):
-        self.state_size = state_size
-        self.action_size = action_size
+    def __init__(self, rozmiar_stanu, rozmiar_akcji, rozmiar_ukryty=256, współczynnik_uczenia=0.0003):
+        self.rozmiar_stanu = rozmiar_stanu
+        self.rozmiar_akcji = rozmiar_akcji
         
         # Parametry uczenia
         self.gamma = 0.99 # Współczynnik dyskontowania przyszłych nagród
         self.epsilon = 1.0  # Współczynnik eksploracji
         self.epsilon_min = 0.1
-        self.epsilon_decay = 0.999
-        self.batch_size = 256 if USE_GPU else 64  # Większy batch na GPU, mniejszy na CPU
-        self.update_frequency = 2  # Co ile kroków aktualizować model
-        self.steps_done = 0
-        self.target_update_freq = 1000  # Co ile kroków aktualizować model docelowy
+        self.spadek_epsilon = 0.999
+        self.rozmiar_partii = 256 if UŻYJ_GPU else 64  # Większy partia na GPU, mniejszy na CPU
+        self.częstotliwość_aktualizacji = 2  # Co ile kroków aktualizować model
+        self.wykonane_kroki = 0
+        self.częstotliwość_aktualizacji_docelowej = 1000  # Co ile kroków aktualizować model docelowy
         
         # Urządzenie (CPU/GPU)
-        self.device = torch.device("cuda" if USE_GPU else "cpu")
-        self.dtype = torch.float16 if USE_FLOAT16 and USE_GPU else torch.float32
+        self.device = torch.device("cuda" if UŻYJ_GPU else "cpu")
+        self.typ_danych = torch.float16 if UŻYJ_FLOAT16 and UŻYJ_GPU else torch.float32
         
         # Bufor doświadczeń
-        self.memory = ExperienceBuffer()
+        self.pamięć = BuforDoświadczeń()
         
         # Model sieci neuronowej (policy network)
-        self.model = QNetwork(state_size, hidden_size, action_size).to(self.device)
-        if USE_FLOAT16 and USE_GPU:
+        self.model = QNetwork(rozmiar_stanu, rozmiar_ukryty, rozmiar_akcji).to(self.device)
+        if UŻYJ_FLOAT16 and UŻYJ_GPU:
             self.model = self.model.half()  # Konwersja do float16 dla GPU
         
         # Model sieci docelowej (target network)
-        self.target_model = QNetwork(state_size, hidden_size, action_size).to(self.device)
-        if USE_FLOAT16 and USE_GPU:
-            self.target_model = self.target_model.half()
+        self.model_docelowy = QNetwork(rozmiar_stanu, rozmiar_ukryty, rozmiar_akcji).to(self.device)
+        if UŻYJ_FLOAT16 and UŻYJ_GPU:
+            self.model_docelowy = self.model_docelowy.half()
             
-        self.update_target_model()
+        self.aktualizuj_model_docelowy()
         
         # Optymalizator - dla CPU używamy Adam, dla GPU AdamW (lepszy dla GPU)
-        if USE_GPU:
-            self.optimizer = optim.AdamW(self.model.parameters(), lr=lr, weight_decay=1e-5)
+        if UŻYJ_GPU:
+            self.optimizer = optim.AdamW(self.model.parameters(), lr=współczynnik_uczenia, weight_decay=1e-5)
         else:
-            self.optimizer = optim.Adam(self.model.parameters(), lr=lr)
+            self.optimizer = optim.Adam(self.model.parameters(), lr=współczynnik_uczenia)
         
         # Funkcja straty - Huber jest bardziej stabilna
         self.criterion = nn.SmoothL1Loss()
@@ -136,7 +136,7 @@ class DQNAgent:
         print(f"Używam urządzenia: {self.device}")
         if self.device.type == 'cuda':
             print(f"Model GPU: {torch.cuda.get_device_name(0)}")
-            if USE_FLOAT16:
+            if UŻYJ_FLOAT16:
                 print("Używam precyzji float16 dla szybszego treningu")
         
         # Utworzenie katalogu na modele
@@ -144,17 +144,17 @@ class DQNAgent:
             os.makedirs('models')
             print("Utworzono katalog 'models' do przechowywania modeli.")
     
-    def update_target_model(self):
+    def aktualizuj_model_docelowy(self):
         """Aktualizacja wag modelu docelowego."""
-        self.target_model.load_state_dict(self.model.state_dict())
+        self.model_docelowy.load_state_dict(self.model.state_dict())
     
-    def remember(self, state, action, reward, next_state, done):
+    def zapamiętaj(self, state, action, reward, next_state, done):
         """Zapisuje doświadczenie w buforze pamięci."""
-        self.memory.push(state, action, reward, next_state, done)
+        self.pamięć.dodaj(state, action, reward, next_state, done)
         # Wstępne pobranie danych do przyszłego uczenia
-        self.memory.prefetch_batch(self.batch_size)
+        self.pamięć.pobierz_wstępnie_batch(self.rozmiar_partii)
     
-    def get_action(self, state):
+    def pobierz_akcję(self, state):
         """
         Wybiera akcję zgodnie z polityką epsilon-greedy.
         
@@ -166,71 +166,71 @@ class DQNAgent:
         """
         # Eksploracja - wybór losowej akcji
         if np.random.rand() <= self.epsilon:
-            return random.randrange(self.action_size)
+            return random.randrange(self.rozmiar_akcji)
         
         # Eksploatacja - wybór akcji o najwyższej wartości Q
         with torch.no_grad():
-            state_tensor = torch.tensor(state, dtype=self.dtype).unsqueeze(0).to(self.device)
-            q_values = self.model(state_tensor)
-            return torch.argmax(q_values).item()
+            tensor_stanu = torch.tensor(state, dtype=self.typ_danych).unsqueeze(0).to(self.device)
+            wartości_q = self.model(tensor_stanu)
+            return torch.argmax(wartości_q).item()
     
-    def learn(self):
+    def ucz_się(self):
         """
         Uczenie na podstawie próbki doświadczeń z pamięci.
         
         Returns:
             float or None: Wartość straty jeśli uczenie miało miejsce, None w przeciwnym razie.
         """
-        self.steps_done += 1
+        self.wykonane_kroki += 1
         
         # Aktualizacja tylko co kilka kroków dla szybszego treningu
-        if self.steps_done % self.update_frequency != 0:
+        if self.wykonane_kroki % self.częstotliwość_aktualizacji != 0:
             return None
         
-        # Sprawdzamy czy mamy wstępnie pobrany batch
-        batch = self.memory.get_prefetched_batch()
-        if batch is None:
+        # Sprawdzamy czy mamy wstępnie pobrany partia
+        partia = self.pamięć.pobierz_wstępnie_pobrany_batch()
+        if partia is None:
             # Jeśli nie, pobieramy nowy
-            batch = self.memory.sample(self.batch_size)
-            if batch is None:
+            partia = self.pamięć.sample(self.rozmiar_partii)
+            if partia is None:
                 return None  # Za mało doświadczeń
         
-        states_tensor, actions_tensor, rewards_tensor, next_states_tensor, dones_tensor = batch
+        tensor_stanów, tensor_akcji, tensor_nagród, tensor_następnych_stanów, tensor_zakończonych = partia
         
         # Obliczanie przewidywanych wartości Q dla obecnych stanów
-        current_q_values = self.model(states_tensor).gather(1, actions_tensor.unsqueeze(1)).squeeze(1)
+        obecne_wartości_q = self.model(tensor_stanów).gather(1, tensor_akcji.unsqueeze(1)).squeeze(1)
         
         # Obliczanie wartości docelowych z podwójnym DQN dla lepszej stabilności
         with torch.no_grad():
             # Podwójny DQN: wybieramy akcje za pomocą sieci głównej
-            next_actions = self.model(next_states_tensor).max(1)[1].unsqueeze(1)
+            następne_akcje = self.model(tensor_następnych_stanów).max(1)[1].unsqueeze(1)
             # Ale wartości Q bierzemy z sieci docelowej
-            next_q_values = self.target_model(next_states_tensor).gather(1, next_actions).squeeze(1)
+            następne_wartości_q = self.model_docelowy(tensor_następnych_stanów).gather(1, następne_akcje).squeeze(1)
             # Obliczamy docelowe wartości Q
-            target_q_values = rewards_tensor + self.gamma * next_q_values * (~dones_tensor)
+            docelowe_wartości_q = tensor_nagród + self.gamma * następne_wartości_q * (~tensor_zakończonych)
         
         # Obliczanie straty i aktualizacja modelu
-        loss = self.criterion(current_q_values, target_q_values)
+        strata = self.criterion(obecne_wartości_q, docelowe_wartości_q)
         
         # Optymalizacja
         self.optimizer.zero_grad()
-        loss.backward()
+        strata.backward()
         # Przycinanie gradientów dla stabilności (szczególnie ważne dla GPU)
         torch.nn.utils.clip_grad_norm_(self.model.parameters(), 1.0)
         self.optimizer.step()
         
         # Aktualizacja modelu docelowego co określoną liczbę kroków
-        if self.steps_done % self.target_update_freq == 0:
-            self.update_target_model()
+        if self.wykonane_kroki % self.częstotliwość_aktualizacji_docelowej == 0:
+            self.aktualizuj_model_docelowy()
             
         # Zmniejszanie wartości epsilon w czasie
         if self.epsilon > self.epsilon_min:
-            self.epsilon *= self.epsilon_decay
+            self.epsilon *= self.spadek_epsilon
         
         # Wstępne pobranie danych do kolejnego uczenia
-        self.memory.prefetch_batch(self.batch_size)
+        self.pamięć.pobierz_wstępnie_batch(self.rozmiar_partii)
         
-        return loss.item()
+        return strata.item()
     
     def save(self, file_name='models/dqn_model.pth'):
         """
@@ -239,21 +239,21 @@ class DQNAgent:
         Args:
             file_name (str): Ścieżka do pliku, w którym zostanie zapisany model.
         """
-        model_state = {
+        stan_modelu = {
             'model_state_dict': self.model.state_dict(),
-            'optimizer_state_dict': self.optimizer.state_dict(),
+            'stan_optymalizatora': self.optimizer.state_dict(),
             'epsilon': self.epsilon,
             'gamma': self.gamma,
-            'state_size': self.state_size,
-            'action_size': self.action_size,
-            'steps_done': self.steps_done,
+            'rozmiar_stanu': self.rozmiar_stanu,
+            'rozmiar_akcji': self.rozmiar_akcji,
+            'wykonane_kroki': self.wykonane_kroki,
             'device_type': self.device.type,
-            'use_float16': USE_FLOAT16
+            'UŻYJ_FLOAT16': UŻYJ_FLOAT16
         }
-        torch.save(model_state, file_name)
+        torch.save(stan_modelu, file_name)
         print(f"Model został zapisany do {file_name}")
 
-    def load(self, file_name='models/dqn_model.pth'):
+    def wczytaj(self, file_name='models/dqn_model.pth'):
         """
         Wczytuje model z pliku.
         
@@ -264,44 +264,44 @@ class DQNAgent:
             bool: True jeśli wczytanie się powiodło, False w przeciwnym razie.
         """
         try:
-            checkpoint = torch.load(file_name, map_location=self.device)
+            punkt_kontrolny = torch.load(file_name, map_location=self.device)
             
             # Sprawdzenie zgodności modelu
-            if checkpoint['state_size'] != self.state_size or checkpoint['action_size'] != self.action_size:
-                print(f"UWAGA: Niezgodność wymiarów modelu! Oczekiwano: {self.state_size}x{self.action_size}, "
-                      f"Wczytano: {checkpoint['state_size']}x{checkpoint['action_size']}")
+            if punkt_kontrolny['rozmiar_stanu'] != self.rozmiar_stanu or punkt_kontrolny['rozmiar_akcji'] != self.rozmiar_akcji:
+                print(f"UWAGA: Niezgodność wymiarów modelu! Oczekiwano: {self.rozmiar_stanu}x{self.rozmiar_akcji}, "
+                      f"Wczytano: {punkt_kontrolny['rozmiar_stanu']}x{punkt_kontrolny['rozmiar_akcji']}")
                 if input("Czy chcesz kontynuować wczytywanie? (t/n): ").lower() != 't':
                     return False
             
             # Wczytywanie stanu modelu
-            self.model.load_state_dict(checkpoint['model_state_dict'])
-            self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
-            self.epsilon = checkpoint['epsilon']
-            self.gamma = checkpoint['gamma']
-            self.state_size = checkpoint['state_size']
-            self.action_size = checkpoint['action_size']
+            self.model.load_state_dict(punkt_kontrolny['model_state_dict'])
+            self.optimizer.load_state_dict(punkt_kontrolny['stan_optymalizatora'])
+            self.epsilon = punkt_kontrolny['epsilon']
+            self.gamma = punkt_kontrolny['gamma']
+            self.rozmiar_stanu = punkt_kontrolny['rozmiar_stanu']
+            self.rozmiar_akcji = punkt_kontrolny['rozmiar_akcji']
             
-            if 'steps_done' in checkpoint:
-                self.steps_done = checkpoint['steps_done']
+            if 'wykonane_kroki' in punkt_kontrolny:
+                self.wykonane_kroki = punkt_kontrolny['wykonane_kroki']
             
             # Obsługa różnych typów urządzeń
-            loaded_device = checkpoint.get('device_type', 'cpu')
-            if loaded_device != self.device.type:
-                print(f"UWAGA: Model został wytrenowany na {loaded_device}, a obecnie używasz {self.device.type}.")
+            wczytane_urządzenie = punkt_kontrolny.get('device_type', 'cpu')
+            if wczytane_urządzenie != self.device.type:
+                print(f"UWAGA: Model został wytrenowany na {wczytane_urządzenie}, a obecnie używasz {self.device.type}.")
                 
             # Obsługa różnych precyzji
-            loaded_float16 = checkpoint.get('use_float16', False)
-            if loaded_float16 != USE_FLOAT16 and self.device.type == 'cuda':
-                print(f"UWAGA: Model używał float16={loaded_float16}, a obecnie float16={USE_FLOAT16}.")
-                if USE_FLOAT16 and not loaded_float16:
+            wczytane_float16 = punkt_kontrolny.get('UŻYJ_FLOAT16', False)
+            if wczytane_float16 != UŻYJ_FLOAT16 and self.device.type == 'cuda':
+                print(f"UWAGA: Model używał float16={wczytane_float16}, a obecnie float16={UŻYJ_FLOAT16}.")
+                if UŻYJ_FLOAT16 and not wczytane_float16:
                     print("Konwertuję model do half precision (float16)...")
                     self.model = self.model.half()
-                elif not USE_FLOAT16 and loaded_float16:
+                elif not UŻYJ_FLOAT16 and wczytane_float16:
                     print("Konwertuję model do full precision (float32)...")
                     self.model = self.model.float()
             
             # Aktualizacja modelu docelowego
-            self.update_target_model()
+            self.aktualizuj_model_docelowy()
             
             print(f"Model został wczytany z {file_name}")
             return True
@@ -345,27 +345,27 @@ class DQNAgent:
                     # Przenieś modele na nowe urządzenie
                     self.device = new_device
                     self.model = self.model.to(new_device)
-                    self.target_model = self.target_model.to(new_device)
+                    self.model_docelowy = self.model_docelowy.to(new_device)
                 
                 # Obsługa precyzji dla GPU
-                    if new_device.type == 'cuda' and USE_FLOAT16:
+                    if new_device.type == 'cuda' and UŻYJ_FLOAT16:
                         print("Konwertuję model do half precision (float16)...")
                         self.model = self.model.half()
-                        self.target_model = self.target_model.half()
-                        self.dtype = torch.float16
-                    elif new_device.type == 'cpu' and self.dtype == torch.float16:
+                        self.model_docelowy = self.model_docelowy.half()
+                        self.typ_danych = torch.float16
+                    elif new_device.type == 'cpu' and self.typ_danych == torch.float16:
                         print("Konwertuję model do full precision (float32)...")
                         self.model = self.model.float()
-                        self.target_model = self.target_model.float()
-                        self.dtype = torch.float32
+                        self.model_docelowy = self.model_docelowy.float()
+                        self.typ_danych = torch.float32
                     
                     # Zaktualizuj optymalizator
                     if new_device.type == 'cuda':
-                        lr = self.optimizer.param_groups[0]['lr']
-                        self.optimizer = optim.AdamW(self.model.parameters(), lr=lr, weight_decay=1e-5)
+                        współczynnik_uczenia = self.optimizer.param_groups[0]['lr']
+                        self.optimizer = optim.AdamW(self.model.parameters(), współczynnik_uczenia=współczynnik_uczenia, weight_decay=1e-5)
                     else:
-                        lr = self.optimizer.param_groups[0]['lr']
-                        self.optimizer = optim.Adam(self.model.parameters(), lr=lr)
+                        współczynnik_uczenia = self.optimizer.param_groups[0]['lr']
+                        self.optimizer = optim.Adam(self.model.parameters(), współczynnik_uczenia=współczynnik_uczenia)
     
         # Aktualizacja parametrów uczenia, jeśli wymagane
         if update_learning_params:
@@ -374,17 +374,17 @@ class DQNAgent:
             self.gamma = float(input(f"Podaj współczynnik dyskontowania (obecny: {self.gamma}): ") or self.gamma)
             self.epsilon = float(input(f"Podaj początkowy współczynnik eksploracji (obecny: {self.epsilon}): ") or self.epsilon)
             self.epsilon_min = float(input(f"Podaj minimalny współczynnik eksploracji (obecny: {self.epsilon_min}): ") or self.epsilon_min)
-            self.epsilon_decay = float(input(f"Podaj współczynnik zmniejszania eksploracji (obecny: {self.epsilon_decay}): ") or self.epsilon_decay)
-            self.batch_size = int(input(f"Podaj rozmiar batcha (obecny: {self.batch_size}): ") or self.batch_size)
+            self.spadek_epsilon = float(input(f"Podaj współczynnik zmniejszania eksploracji (obecny: {self.spadek_epsilon}): ") or self.spadek_epsilon)
+            self.rozmiar_partii = int(input(f"Podaj rozmiar batcha (obecny: {self.rozmiar_partii}): ") or self.rozmiar_partii)
         
         # Dostosuj rozmiar batcha do urządzenia
         if self.device.type == 'cuda':
-            self.batch_size = max(self.batch_size, 128)  # Minimum 128 dla GPU
+            self.rozmiar_partii = max(self.rozmiar_partii, 128)  # Minimum 128 dla GPU
         else:
-            self.batch_size = min(self.batch_size, 64)  # Maximum 64 dla CPU
+            self.rozmiar_partii = min(self.rozmiar_partii, 64)  # Maximum 64 dla CPU
     
         print(f"Kontynuuję trening na urządzeniu: {self.device}")
-        print(f"Gamma: {self.gamma}, Epsilon: {self.epsilon}, Batch size: {self.batch_size}")
+        print(f"Gamma: {self.gamma}, Epsilon: {self.epsilon}, partia size: {self.rozmiar_partii}")
         print(f"Trening przez {n_episodes} epizodów...")
     
         # Uruchom funkcję trenującą
@@ -404,6 +404,6 @@ class DQNAgent:
                 print(f"Przywracam model na oryginalne urządzenie: {original_device}")
                 self.device = original_device
                 self.model = self.model.to(original_device)
-                self.target_model = self.target_model.to(original_device)
+                self.model_docelowy = self.model_docelowy.to(original_device)
             raise e
     

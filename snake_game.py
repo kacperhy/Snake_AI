@@ -7,130 +7,130 @@ import random
 import numpy as np
 from enum import Enum
 from config import (
-    USE_GPU, USE_FLOAT16, CPU_THREAD_COUNT, WINDOW_WIDTH, 
-    WINDOW_HEIGHT, BLOCK_SIZE, GAME_SPEED, HIDDEN_SIZE, MODELS_DIR
+    UŻYJ_GPU, UŻYJ_FLOAT16, LICZBA_WĄTKÓW_CPU, SZEROKOŚĆ_OKNA, 
+    WYSOKOŚĆ_OKNA, ROZMIAR_BLOKU, PRĘDKOŚĆ_GRY, ROZMIAR_UKRYTY, KATALOG_MODELI
 )
 
 # Definicja kolorów
-WHITE = (255, 255, 255)
-BLACK = (0, 0, 0)
-RED = (255, 0, 0)
-GREEN = (0, 255, 0)
-BLUE = (0, 0, 255)
-DARK_GREEN = (0, 200, 0)
+BIAŁY = (255, 255, 255)
+CZARNY = (0, 0, 0)
+CZERWONY = (255, 0, 0)
+ZIELONY = (0, 255, 0)
+NIEBIESKI = (0, 0, 255)
+CIEMNY_ZIELONY = (0, 200, 0)
 
 # Definicja kierunków
-class Direction(Enum):
-    RIGHT = 0
-    DOWN = 1
-    LEFT = 2
-    UP = 3
+class Kierunek(Enum):
+    PRAWO = 0
+    DÓŁ = 1
+    LEWO = 2
+    GÓRA = 3
 
 class SnakeGame:
     """Pełna implementacja gry Snake z interfejsem graficznym do testowania."""
-    def __init__(self):
+    def __init__(self, szerokość=SZEROKOŚĆ_OKNA, wysokość=WYSOKOŚĆ_OKNA, rozmiar_bloku=ROZMIAR_BLOKU):
         # Inicjalizacja parametrów gry
-        self.width = WINDOW_WIDTH
-        self.height = WINDOW_HEIGHT
-        self.block_size = BLOCK_SIZE
-        self.display = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
+        self.szerokość = szerokość
+        self.wysokość =    wysokość
+        self.rozmiar_bloku = rozmiar_bloku
+        self.display = pygame.display.set_mode((szerokość, wysokość))
         pygame.display.set_caption('Snake AI - PyTorch')
-        self.clock = pygame.time.Clock()
+        self.zegar = pygame.time.Clock()
         self.reset()
     
     def reset(self):
         # Resetowanie gry do stanu początkowego
-        self.direction = Direction.RIGHT
+        self.Kierunek = Kierunek.PRAWO
         
         # Wąż zaczyna na środku planszy
-        self.head = [self.width // (2 * self.block_size) * self.block_size, 
-                     self.height // (2 * self.block_size) * self.block_size]
+        self.głowa = [self.szerokość // (2 * self.rozmiar_bloku) * self.rozmiar_bloku, 
+                     self.wysokość // (2 * self.rozmiar_bloku) * self.rozmiar_bloku]
         
         # Początkowe segmenty węża
         self.snake = [
-            self.head,
-            [self.head[0] - self.block_size, self.head[1]],
-            [self.head[0] - 2 * self.block_size, self.head[1]]
+            self.głowa,
+            [self.głowa[0] - self.rozmiar_bloku, self.głowa[1]],
+            [self.głowa[0] - 2 * self.rozmiar_bloku, self.głowa[1]]
         ]
         
-        self.score = 0
-        self.food = None
-        self._place_food()
-        self.frame_iteration = 0
-        self.steps_without_food = 0
-        return self._get_state()
+        self.wynik = 0
+        self.jedzenie = None
+        self._umieść_jedzenie()
+        self.iteracja_klatki = 0
+        self.kroki_bez_jedzenia = 0
+        return self._pobierz_stan()
     
-    def _place_food(self):
+    def _umieść_jedzenie(self):
         # Umieszczenie jedzenia w losowym miejscu na planszy, ale nie na wężu
-        max_x = (self.width // self.block_size) - 1
-        max_y = (self.height // self.block_size) - 1
+        max_x = (self.szerokość // self.rozmiar_bloku) - 1
+        max_y = (self.wysokość // self.rozmiar_bloku) - 1
         
         while True:
-            x = random.randint(0, max_x) * self.block_size
-            y = random.randint(0, max_y) * self.block_size
-            self.food = [x, y]
-            if self.food not in self.snake:
+            x = random.randint(0, max_x) * self.rozmiar_bloku
+            y = random.randint(0, max_y) * self.rozmiar_bloku
+            self.jedzenie = [x, y]
+            if self.jedzenie not in self.snake:
                 break
     
-    def _get_state(self):
+    def _pobierz_stan(self):
         # Zwraca obecny stan gry jako tablicę cech
-        head = self.snake[0]
+        głowa = self.snake[0]
         
         # Punkty wokół głowy
-        point_l = [head[0] - self.block_size, head[1]]
-        point_r = [head[0] + self.block_size, head[1]]
-        point_u = [head[0], head[1] - self.block_size]
-        point_d = [head[0], head[1] + self.block_size]
+        punkt_l = [głowa[0] - self.rozmiar_bloku, głowa[1]]
+        punkt_pr = [głowa[0] + self.rozmiar_bloku, głowa[1]]
+        punkt_g = [głowa[0], głowa[1] - self.rozmiar_bloku]
+        punkt_d = [głowa[0], głowa[1] + self.rozmiar_bloku]
         
         # Aktualne kierunki
-        dir_l = self.direction == Direction.LEFT
-        dir_r = self.direction == Direction.RIGHT
-        dir_u = self.direction == Direction.UP
-        dir_d = self.direction == Direction.DOWN
+        kier_l = self.Kierunek == Kierunek.LEWO
+        kier_pr = self.Kierunek == Kierunek.PRAWO
+        kier_g = self.Kierunek == Kierunek.GÓRA
+        kier_d = self.Kierunek == Kierunek.DÓŁ
         
         # Stan jako lista cech
-        state = [
+        stan = [
             # Niebezpieczeństwo przed sobą
-            (dir_r and self._is_collision(point_r)) or
-            (dir_l and self._is_collision(point_l)) or
-            (dir_u and self._is_collision(point_u)) or
-            (dir_d and self._is_collision(point_d)),
+            (kier_pr and self._czy_kolizja(punkt_pr)) or
+            (kier_l and self._czy_kolizja(punkt_l)) or
+            (kier_g and self._czy_kolizja(punkt_g)) or
+            (kier_d and self._czy_kolizja(punkt_d)),
             
             # Niebezpieczeństwo po prawej
-            (dir_u and self._is_collision(point_r)) or
-            (dir_d and self._is_collision(point_l)) or
-            (dir_l and self._is_collision(point_u)) or
-            (dir_r and self._is_collision(point_d)),
+            (kier_g and self._czy_kolizja(punkt_pr)) or
+            (kier_d and self._czy_kolizja(punkt_l)) or
+            (kier_l and self._czy_kolizja(punkt_g)) or
+            (kier_pr and self._czy_kolizja(punkt_d)),
             
             # Niebezpieczeństwo po lewej
-            (dir_d and self._is_collision(point_r)) or
-            (dir_u and self._is_collision(point_l)) or
-            (dir_r and self._is_collision(point_u)) or
-            (dir_l and self._is_collision(point_d)),
+            (kier_d and self._czy_kolizja(punkt_pr)) or
+            (kier_g and self._czy_kolizja(punkt_l)) or
+            (kier_pr and self._czy_kolizja(punkt_g)) or
+            (kier_l and self._czy_kolizja(punkt_d)),
             
             # Kierunek ruchu
-            dir_l,
-            dir_r,
-            dir_u,
-            dir_d,
+            kier_l,
+            kier_pr,
+            kier_g,
+            kier_d,
             
             # Lokalizacja jedzenia względem głowy
-            self.food[0] < head[0],  # jedzenie po lewej
-            self.food[0] > head[0],  # jedzenie po prawej
-            self.food[1] < head[1],  # jedzenie powyżej
-            self.food[1] > head[1]   # jedzenie poniżej
+            self.jedzenie[0] < głowa[0],  # jedzenie po lewej
+            self.jedzenie[0] > głowa[0],  # jedzenie po prawej
+            self.jedzenie[1] < głowa[1],  # jedzenie powyżej
+            self.jedzenie[1] > głowa[1]   # jedzenie poniżej
         ]
         
-        return np.array(state, dtype=np.float32)
+        return np.array(stan, dtype=np.float32)
     
-    def _is_collision(self, point=None):
+    def _czy_kolizja(self, point=None):
         # Sprawdza, czy nastąpiła kolizja
         if point is None:
             point = self.snake[0]
             
         # Uderzenie w ścianę
-        if (point[0] < 0 or point[0] >= self.width or 
-            point[1] < 0 or point[1] >= self.height):
+        if (point[0] < 0 or point[0] >= self.szerokość or 
+            point[1] < 0 or point[1] >= self.wysokość):
             return True
         
         # Uderzenie w siebie
@@ -139,10 +139,10 @@ class SnakeGame:
             
         return False
     
-    def step(self, action):
+    def krok(self, akcja):
         # Wykonanie akcji i przejście do następnego stanu
-        self.frame_iteration += 1
-        self.steps_without_food += 1
+        self.iteracja_klatki += 1
+        self.kroki_bez_jedzenia += 1
         
         # Obsługa zdarzeń pygame
         for event in pygame.event.get():
@@ -152,196 +152,196 @@ class SnakeGame:
         
         # Aktualizacja kierunku na podstawie akcji
         # [prosto, w prawo, w lewo]
-        clock_wise = [Direction.RIGHT, Direction.DOWN, Direction.LEFT, Direction.UP]
-        idx = clock_wise.index(self.direction)
+        clock_wise = [Kierunek.PRAWO, Kierunek.DÓŁ, Kierunek.LEWO, Kierunek.GÓRA]
+        indeks = clock_wise.index(self.Kierunek)
         
-        if action == 0:  # Prosto
-            new_dir = clock_wise[idx]
-        elif action == 1:  # W prawo
-            next_idx = (idx + 1) % 4
-            new_dir = clock_wise[next_idx]
+        if akcja == 0:  # Prosto
+            nowy_kier = clock_wise[indeks]
+        elif akcja == 1:  # W prawo
+            next_idx = (indeks + 1) % 4
+            nowy_kier = clock_wise[next_idx]
         else:  # W lewo
-            next_idx = (idx - 1) % 4
-            new_dir = clock_wise[next_idx]
+            next_idx = (indeks - 1) % 4
+            nowy_kier = clock_wise[next_idx]
             
-        self.direction = new_dir
+        self.Kierunek = nowy_kier
         
         # Aktualizacja pozycji głowy
         x = self.snake[0][0]
         y = self.snake[0][1]
-        if self.direction == Direction.RIGHT:
-            x += self.block_size
-        elif self.direction == Direction.LEFT:
-            x -= self.block_size
-        elif self.direction == Direction.DOWN:
-            y += self.block_size
-        elif self.direction == Direction.UP:
-            y -= self.block_size
+        if self.Kierunek == Kierunek.PRAWO:
+            x += self.rozmiar_bloku
+        elif self.Kierunek == Kierunek.LEWO:
+            x -= self.rozmiar_bloku
+        elif self.Kierunek == Kierunek.DÓŁ:
+            y += self.rozmiar_bloku
+        elif self.Kierunek == Kierunek.GÓRA:
+            y -= self.rozmiar_bloku
             
-        self.head = [x, y]
-        self.snake.insert(0, self.head)
+        self.głowa = [x, y]
+        self.snake.insert(0, self.głowa)
         
         # Sprawdzenie, czy gra się zakończyła
-        reward = 0
-        game_over = False
+        nagroda = 0
+        koniec_gry = False
         
         # Kolizja lub przekroczenie limitu ruchów bez jedzenia
         # Bardziej agresywny limit dla długich węży (zmniejsza trenowanie na "chodzeniu w kółko")
-        max_steps_without_food = 100 * len(self.snake)
+        maks_kroków_bez_jedzenia = 100 * len(self.snake)
         if len(self.snake) > 10:
-            max_steps_without_food = 50 * len(self.snake)
+            maks_kroków_bez_jedzenia = 50 * len(self.snake)
             
-        if self._is_collision() or self.steps_without_food > max_steps_without_food:
-            game_over = True
-            reward = -10
-            return self._get_state(), reward, game_over, self.score
+        if self._czy_kolizja() or self.kroki_bez_jedzenia > maks_kroków_bez_jedzenia:
+            koniec_gry = True
+            nagroda = -10
+            return self._pobierz_stan(), nagroda, koniec_gry, self.wynik
             
         # Zjedzenie jedzenia
-        if self.head == self.food:
-            self.score += 1
-            reward = 10
-            self.steps_without_food = 0
-            self._place_food()
+        if self.głowa == self.jedzenie:
+            self.wynik += 1
+            nagroda = 10
+            self.kroki_bez_jedzenia = 0
+            self._umieść_jedzenie()
         else:
             self.snake.pop()  # usunięcie ostatniego segmentu węża, jeśli nie zjadł jedzenia
             
             # Dodatkowe nagrody za zbliżanie się do jedzenia (kształtowanie nagrody)
-            prev_dist_to_food = abs(self.snake[1][0] - self.food[0]) + abs(self.snake[1][1] - self.food[1])
-            cur_dist_to_food = abs(self.head[0] - self.food[0]) + abs(self.head[1] - self.food[1])
+            poprz_odl_do_jedzenia = abs(self.snake[1][0] - self.jedzenie[0]) + abs(self.snake[1][1] - self.jedzenie[1])
+            obecna_odl_do_jedzenia = abs(self.głowa[0] - self.jedzenie[0]) + abs(self.głowa[1] - self.jedzenie[1])
             
-            if cur_dist_to_food < prev_dist_to_food:
-                reward = 0.1  # Mała nagroda za zbliżanie się do jedzenia
-            elif cur_dist_to_food > prev_dist_to_food:
-                reward = -0.1  # Mała kara za oddalanie się od jedzenia
+            if obecna_odl_do_jedzenia < poprz_odl_do_jedzenia:
+                nagroda = 0.1  # Mała nagroda za zbliżanie się do jedzenia
+            elif obecna_odl_do_jedzenia > poprz_odl_do_jedzenia:
+                nagroda = -0.1  # Mała kara za oddalanie się od jedzenia
         
         # Aktualizacja wyświetlania
-        self._update_ui()
-        self.clock.tick(20)  # Kontrola szybkości gry
+        self._aktualizuj_ui()
+        self.zegar.tick(20)  # Kontrola szybkości gry
         
         # Zwrócenie nowego stanu, nagrody i informacji, czy gra się zakończyła
-        return self._get_state(), reward, game_over, self.score
+        return self._pobierz_stan(), nagroda, koniec_gry, self.wynik
     
-    def _update_ui(self):
+    def _aktualizuj_ui(self):
         # Aktualizacja interfejsu graficznego
-        self.display.fill(BLACK)
+        self.display.fill(CZARNY)
         
         # Rysowanie węża
         for pt in self.snake:
-            pygame.draw.rect(self.display, GREEN, pygame.Rect(pt[0], pt[1], self.block_size, self.block_size))
-            pygame.draw.rect(self.display, DARK_GREEN, pygame.Rect(pt[0] + 4, pt[1] + 4, self.block_size - 8, self.block_size - 8))
+            pygame.draw.rect(self.display, ZIELONY, pygame.Rect(pt[0], pt[1], self.rozmiar_bloku, self.rozmiar_bloku))
+            pygame.draw.rect(self.display, CIEMNY_ZIELONY, pygame.Rect(pt[0] + 4, pt[1] + 4, self.rozmiar_bloku - 8, self.rozmiar_bloku - 8))
             
         # Rysowanie jedzenia
-        pygame.draw.rect(self.display, RED, pygame.Rect(self.food[0], self.food[1], self.block_size, self.block_size))
+        pygame.draw.rect(self.display, CZERWONY, pygame.Rect(self.jedzenie[0], self.jedzenie[1], self.rozmiar_bloku, self.rozmiar_bloku))
         
         # Wyświetlanie wyniku
         font = pygame.font.SysFont('arial', 25)
-        text = font.render(f"Wynik: {self.score}", True, WHITE)
-        self.display.blit(text, [0, 0])
+        tekst = font.render(f"Wynik: {self.wynik}", True, BIAŁY)
+        self.display.blit(tekst, [0, 0])
         pygame.display.flip()
 
 
-class SnakeGameSimple:
+class UproszczonySnake:
     """Uproszczona wersja gry Snake bez interfejsu graficznego, zoptymalizowana pod kątem szybkości."""
-    def __init__(self, width=640, height=480, block_size=20):
+    def __init__(self, szerokość=SZEROKOŚĆ_OKNA, wysokość=WYSOKOŚĆ_OKNA, rozmiar_bloku=ROZMIAR_BLOKU):
         # Inicjalizacja parametrów gry bez interfejsu graficznego
-        self.width = width
-        self.height = height
-        self.block_size = block_size
+        self.szerokość =   szerokość
+        self.wysokość = wysokość
+        self.rozmiar_bloku = rozmiar_bloku
         # Prekompilacja stałych
-        self.max_x = (width // block_size) - 1
-        self.max_y = (height // block_size) - 1
+        self.max_x = (szerokość // rozmiar_bloku) - 1
+        self.max_y = (wysokość // rozmiar_bloku) - 1
         self.reset()
     
     def reset(self):
         # Resetowanie gry do stanu początkowego
-        self.direction = Direction.RIGHT
+        self.Kierunek = Kierunek.PRAWO
         
         # Wąż zaczyna na środku planszy
-        self.head = [self.width // (2 * self.block_size) * self.block_size, 
-                     self.height // (2 * self.block_size) * self.block_size]
+        self.głowa = [self.szerokość // (2 * self.rozmiar_bloku) * self.rozmiar_bloku, 
+                     self.wysokość // (2 * self.rozmiar_bloku) * self.rozmiar_bloku]
         
         # Początkowe segmenty węża
         self.snake = [
-            self.head.copy(),  # Używamy kopii, aby uniknąć referencji
-            [self.head[0] - self.block_size, self.head[1]],
-            [self.head[0] - 2 * self.block_size, self.head[1]]
+            self.głowa.copy(),  # Używamy kopii, aby uniknąć referencji
+            [self.głowa[0] - self.rozmiar_bloku, self.głowa[1]],
+            [self.głowa[0] - 2 * self.rozmiar_bloku, self.głowa[1]]
         ]
         
-        self.score = 0
-        self.food = None
-        self._place_food()
-        self.frame_iteration = 0
-        self.steps_without_food = 0
-        return self._get_state()
+        self.wynik = 0
+        self.jedzenie = None
+        self._umieść_jedzenie()
+        self.iteracja_klatki = 0
+        self.kroki_bez_jedzenia = 0
+        return self._pobierz_stan()
     
-    def _place_food(self):
+    def _umieść_jedzenie(self):
         # Umieszczenie jedzenia w losowym miejscu na planszy, ale nie na wężu
         while True:
-            x = random.randint(0, self.max_x) * self.block_size
-            y = random.randint(0, self.max_y) * self.block_size
-            self.food = [x, y]
-            if self.food not in self.snake:
+            x = random.randint(0, self.max_x) * self.rozmiar_bloku
+            y = random.randint(0, self.max_y) * self.rozmiar_bloku
+            self.jedzenie = [x, y]
+            if self.jedzenie not in self.snake:
                 break
     
-    def _get_state(self):
+    def _pobierz_stan(self):
         # Zwraca obecny stan gry jako tablicę cech (identyczna funkcja jak w SnakeGame)
-        head = self.snake[0]
+        głowa = self.snake[0]
         
         # Punkty wokół głowy
-        point_l = [head[0] - self.block_size, head[1]]
-        point_r = [head[0] + self.block_size, head[1]]
-        point_u = [head[0], head[1] - self.block_size]
-        point_d = [head[0], head[1] + self.block_size]
+        punkt_l = [głowa[0] - self.rozmiar_bloku, głowa[1]]
+        punkt_pr = [głowa[0] + self.rozmiar_bloku, głowa[1]]
+        punkt_g = [głowa[0], głowa[1] - self.rozmiar_bloku]
+        punkt_d = [głowa[0], głowa[1] + self.rozmiar_bloku]
         
         # Aktualne kierunki
-        dir_l = self.direction == Direction.LEFT
-        dir_r = self.direction == Direction.RIGHT
-        dir_u = self.direction == Direction.UP
-        dir_d = self.direction == Direction.DOWN
+        kier_l = self.Kierunek == Kierunek.LEWO
+        kier_pr = self.Kierunek == Kierunek.PRAWO
+        kier_g = self.Kierunek == Kierunek.GÓRA
+        kier_d = self.Kierunek == Kierunek.DÓŁ
         
         # Stan jako lista cech
-        state = [
+        stan = [
             # Niebezpieczeństwo przed sobą
-            (dir_r and self._is_collision(point_r)) or
-            (dir_l and self._is_collision(point_l)) or
-            (dir_u and self._is_collision(point_u)) or
-            (dir_d and self._is_collision(point_d)),
+            (kier_pr and self._czy_kolizja(punkt_pr)) or
+            (kier_l and self._czy_kolizja(punkt_l)) or
+            (kier_g and self._czy_kolizja(punkt_g)) or
+            (kier_d and self._czy_kolizja(punkt_d)),
             
             # Niebezpieczeństwo po prawej
-            (dir_u and self._is_collision(point_r)) or
-            (dir_d and self._is_collision(point_l)) or
-            (dir_l and self._is_collision(point_u)) or
-            (dir_r and self._is_collision(point_d)),
+            (kier_g and self._czy_kolizja(punkt_pr)) or
+            (kier_d and self._czy_kolizja(punkt_l)) or
+            (kier_l and self._czy_kolizja(punkt_g)) or
+            (kier_pr and self._czy_kolizja(punkt_d)),
             
             # Niebezpieczeństwo po lewej
-            (dir_d and self._is_collision(point_r)) or
-            (dir_u and self._is_collision(point_l)) or
-            (dir_r and self._is_collision(point_u)) or
-            (dir_l and self._is_collision(point_d)),
+            (kier_d and self._czy_kolizja(punkt_pr)) or
+            (kier_g and self._czy_kolizja(punkt_l)) or
+            (kier_pr and self._czy_kolizja(punkt_g)) or
+            (kier_l and self._czy_kolizja(punkt_d)),
             
             # Kierunek ruchu
-            dir_l,
-            dir_r,
-            dir_u,
-            dir_d,
+            kier_l,
+            kier_pr,
+            kier_g,
+            kier_d,
             
             # Lokalizacja jedzenia względem głowy
-            self.food[0] < head[0],  # jedzenie po lewej
-            self.food[0] > head[0],  # jedzenie po prawej
-            self.food[1] < head[1],  # jedzenie powyżej
-            self.food[1] > head[1]   # jedzenie poniżej
+            self.jedzenie[0] < głowa[0],  # jedzenie po lewej
+            self.jedzenie[0] > głowa[0],  # jedzenie po prawej
+            self.jedzenie[1] < głowa[1],  # jedzenie powyżej
+            self.jedzenie[1] > głowa[1]   # jedzenie poniżej
         ]
         
-        return np.array(state, dtype=np.float32)
+        return np.array(stan, dtype=np.float32)
     
-    def _is_collision(self, point=None):
+    def _czy_kolizja(self, point=None):
         # Sprawdza, czy nastąpiła kolizja (optymalizacja pod kątem szybkości)
         if point is None:
             point = self.snake[0]
             
         # Uderzenie w ścianę
-        if (point[0] < 0 or point[0] >= self.width or 
-            point[1] < 0 or point[1] >= self.height):
+        if (point[0] < 0 or point[0] >= self.szerokość or 
+            point[1] < 0 or point[1] >= self.wysokość):
             return True
         
         # Uderzenie w siebie
@@ -350,73 +350,73 @@ class SnakeGameSimple:
             
         return False
     
-    def step(self, action):
+    def krok(self, akcja):
         # Wykonanie akcji i przejście do następnego stanu (bez renderowania)
-        self.frame_iteration += 1
-        self.steps_without_food += 1
+        self.iteracja_klatki += 1
+        self.kroki_bez_jedzenia += 1
         
         # Aktualizacja kierunku na podstawie akcji - używamy prekompilowanych stałych
         # [prosto, w prawo, w lewo]
-        clock_wise = [Direction.RIGHT, Direction.DOWN, Direction.LEFT, Direction.UP]
-        idx = clock_wise.index(self.direction)
+        clock_wise = [Kierunek.PRAWO, Kierunek.DÓŁ, Kierunek.LEWO, Kierunek.GÓRA]
+        indeks = clock_wise.index(self.Kierunek)
         
-        if action == 0:  # Prosto
-            new_dir = clock_wise[idx]
-        elif action == 1:  # W prawo
-            next_idx = (idx + 1) % 4
-            new_dir = clock_wise[next_idx]
+        if akcja == 0:  # Prosto
+            nowy_kier = clock_wise[indeks]
+        elif akcja == 1:  # W prawo
+            next_idx = (indeks + 1) % 4
+            nowy_kier = clock_wise[next_idx]
         else:  # W lewo
-            next_idx = (idx - 1) % 4
-            new_dir = clock_wise[next_idx]
+            next_idx = (indeks - 1) % 4
+            nowy_kier = clock_wise[next_idx]
             
-        self.direction = new_dir
+        self.Kierunek = nowy_kier
         
         # Aktualizacja pozycji głowy
         x = self.snake[0][0]
         y = self.snake[0][1]
-        if self.direction == Direction.RIGHT:
-            x += self.block_size
-        elif self.direction == Direction.LEFT:
-            x -= self.block_size
-        elif self.direction == Direction.DOWN:
-            y += self.block_size
-        elif self.direction == Direction.UP:
-            y -= self.block_size
+        if self.Kierunek == Kierunek.PRAWO:
+            x += self.rozmiar_bloku
+        elif self.Kierunek == Kierunek.LEWO:
+            x -= self.rozmiar_bloku
+        elif self.Kierunek == Kierunek.DÓŁ:
+            y += self.rozmiar_bloku
+        elif self.Kierunek == Kierunek.GÓRA:
+            y -= self.rozmiar_bloku
             
-        self.head = [x, y]
-        self.snake.insert(0, self.head.copy())  # Używamy kopii, aby uniknąć referencji
+        self.głowa = [x, y]
+        self.snake.insert(0, self.głowa.copy())  # Używamy kopii, aby uniknąć referencji
         
         # Sprawdzenie, czy gra się zakończyła
-        reward = 0
-        game_over = False
+        nagroda = 0
+        koniec_gry = False
         
         # Kolizja lub przekroczenie limitu ruchów bez jedzenia
-        max_steps_without_food = 100 * len(self.snake)
+        maks_kroków_bez_jedzenia = 100 * len(self.snake)
         if len(self.snake) > 10:
-            max_steps_without_food = 50 * len(self.snake)
+            maks_kroków_bez_jedzenia = 50 * len(self.snake)
             
-        if self._is_collision() or self.steps_without_food > max_steps_without_food:
-            game_over = True
-            reward = -10
-            return self._get_state(), reward, game_over, self.score
+        if self._czy_kolizja() or self.kroki_bez_jedzenia > maks_kroków_bez_jedzenia:
+            koniec_gry = True
+            nagroda = -10
+            return self._pobierz_stan(), nagroda, koniec_gry, self.wynik
             
         # Zjedzenie jedzenia
-        if self.head == self.food:
-            self.score += 1
-            reward = 10
-            self.steps_without_food = 0
-            self._place_food()
+        if self.głowa == self.jedzenie:
+            self.wynik += 1
+            nagroda = 10
+            self.kroki_bez_jedzenia = 0
+            self._umieść_jedzenie()
         else:
             self.snake.pop()  # usunięcie ostatniego segmentu węża, jeśli nie zjadł jedzenia
             
             # Dodatkowe nagrody za zbliżanie się do jedzenia
-            prev_dist_to_food = abs(self.snake[1][0] - self.food[0]) + abs(self.snake[1][1] - self.food[1])
-            cur_dist_to_food = abs(self.head[0] - self.food[0]) + abs(self.head[1] - self.food[1])
+            poprz_odl_do_jedzenia = abs(self.snake[1][0] - self.jedzenie[0]) + abs(self.snake[1][1] - self.jedzenie[1])
+            obecna_odl_do_jedzenia = abs(self.głowa[0] - self.jedzenie[0]) + abs(self.głowa[1] - self.jedzenie[1])
             
-            if cur_dist_to_food < prev_dist_to_food:
-                reward = 0.1  # Mała nagroda za zbliżanie się do jedzenia
-            elif cur_dist_to_food > prev_dist_to_food:
-                reward = -0.1  # Mała kara za oddalanie się od jedzenia
+            if obecna_odl_do_jedzenia < poprz_odl_do_jedzenia:
+                nagroda = 0.1  # Mała nagroda za zbliżanie się do jedzenia
+            elif obecna_odl_do_jedzenia > poprz_odl_do_jedzenia:
+                nagroda = -0.1  # Mała kara za oddalanie się od jedzenia
         
         # Zwrócenie nowego stanu, nagrody i informacji, czy gra się zakończyła
-        return self._get_state(), reward, game_over, self.score
+        return self._pobierz_stan(), nagroda, koniec_gry, self.wynik

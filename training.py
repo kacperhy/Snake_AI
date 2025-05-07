@@ -6,257 +6,255 @@ import numpy as np
 import torch
 from tqdm import tqdm
 import matplotlib.pyplot as plt
-from snake_game import SnakeGameSimple
-from config import USE_GPU
+from snake_game import UproszczonySnake
+from config import UŻYJ_GPU
 import pygame
 from agent import DQNAgent
-from typing import List, Tuple
-from typing import Dict
-from typing import Any
-from typing import Optional
-from typing import Union
-from typing import Callable
-from typing import Type
-from typing import Any
-from typing import Dict
-from typing import List
-from typing import Tuple
-from typing import Union        
+      
 
-def run_episode(agent, game_params, max_steps=10000):
+def uruchom_epizod(agent, parametry_gry, maks_kroków=10000):
     """
     Przeprowadza pojedynczy epizod i zwraca zebrane doświadczenia.
     
     Args:
         agent (DQNAgent): Agent podejmujący decyzje.
-        game_params (dict): Parametry do inicjalizacji gry.
-        max_steps (int): Maksymalna liczba kroków w epizodzie.
+        parametry_gry (dict): Parametry do inicjalizacji gry.
+        maks_kroków (int): Maksymalna liczba kroków w epizodzie.
         
     Returns:
         tuple: Trójka (doświadczenia, całkowita nagroda, wynik).
     """
     # Inicjalizacja gry bez interfejsu graficznego
-    game = SnakeGameSimple(**game_params)
-    state = game.reset()
-    done = False
-    step_count = 0
-    total_reward = 0
-    experiences = []
+    game = UproszczonySnake(**parametry_gry)
+    stan = game.reset()
+    zakończone = False
+    liczba_kroków = 0
+    łączna_nagroda = 0
+    doświadczenia = []
     
-    while not done and step_count < max_steps:
+    while not zakończone and liczba_kroków < maks_kroków:
         # Wybór akcji przez agenta
-        action = agent.get_action(state)
+        akcja = agent.pobierz_akcję(stan)
         
         # Wykonanie akcji w środowisku
-        next_state, reward, done, score = game.step(action)
+        następny_stan, nagroda, zakończone, wynik = game.krok(akcja)
         
         # Zapisanie doświadczenia do późniejszego użycia
-        experiences.append((state, action, reward, next_state, done))
+        doświadczenia.append((stan, akcja, nagroda, następny_stan, zakończone))
         
         # Przejście do nowego stanu
-        state = next_state
-        total_reward += reward
-        step_count += 1
+        stan = następny_stan
+        łączna_nagroda += nagroda
+        liczba_kroków += 1
     
-    return experiences, total_reward, score
+    return doświadczenia, łączna_nagroda, wynik
 
 
-def train_hybrid(agent, game_params, n_episodes=1000, target_update=10, save_interval=100, n_parallel=4):
+def trenuj_hybrydowo(agent, parametry_gry, liczba_epizodów=1000, aktualizacja_docelowa=10, interwał_zapisu=100, liczba_równoległych=4):
     """
     Trenuje agenta z wykorzystaniem zarówno CPU jak i GPU dla maksymalnej wydajności.
     
     Args:
         agent (DQNAgent): Agent do trenowania.
-        game_params (dict): Parametry do inicjalizacji gry.
-        n_episodes (int): Liczba epizodów treningu.
-        target_update (int): Co ile epizodów aktualizować model docelowy.
-        save_interval (int): Co ile epizodów zapisywać model.
-        n_parallel (int): Liczba równoległych gier.
+        parametry_gry (dict): Parametry do inicjalizacji gry.
+        liczba_epizodów (int): Liczba epizodów treningu.
+        aktualizacja_docelowa (int): Co ile epizodów aktualizować model docelowy.
+        interwał_zapisu (int): Co ile epizodów zapisywać model.
+        liczba_równoległych (int): Liczba równoległych gier.
         
     Returns:
         tuple: Para (wyniki, historia epsilon).
     """
-    scores = []
-    eps_history = []
-    best_score = 0
-    avg_loss = 0
+    wyniki = []
+    historia_ep = []
+    najlepszy_wynik = 0
+    średnia_strata = 0
     
     # Określamy tryb treningu na podstawie dostępności GPU
-    if USE_GPU:
+    if UŻYJ_GPU:
         print(f"Trening hybrydowy: zbieranie doświadczeń na CPU, trening na GPU.")
     else:
-        print(f"Trening na CPU z {n_parallel} równoległymi grami.")
+        print(f"Trening na CPU z {liczba_równoległych} równoległymi grami.")
     
     # Liczba grup epizodów do przeprowadzenia
-    n_chunks = (n_episodes + n_parallel - 1) // n_parallel
+    liczba_fragmentów = (liczba_epizodów + liczba_równoległych - 1) // liczba_równoległych
     
-    with tqdm(total=n_episodes, desc="Trening") as pbar:
-        for chunk in range(n_chunks):
+    with tqdm(total=liczba_epizodów, desc="Trening") as pbar:
+        for fragment in range(liczba_fragmentów):
             # Rzeczywista liczba epizodów w tej grupie
-            actual_n = min(n_parallel, n_episodes - chunk * n_parallel)
+            rzeczywista_n = min(liczba_równoległych, liczba_epizodów - fragment * liczba_równoległych)
             
             # Uruchomienie wielu epizodów równolegle (symulacja wielowątkowości)
-            all_experiences = []
-            chunk_scores = []
+            wszystkie_doświadczenia = []
+            wyniki_fragmentu = []
             
-            # Wykonujemy n_parallel gier "równolegle"
-            for _ in range(actual_n):
-                experiences, _, score = run_episode(agent, game_params)
-                all_experiences.extend(experiences)
-                chunk_scores.append(score)
+            # Wykonujemy liczba_równoległych gier "równolegle"
+            for _ in range(rzeczywista_n):
+                doświadczenia, _, wynik = uruchom_epizod(agent, parametry_gry)
+                wszystkie_doświadczenia.extend(doświadczenia)
+                wyniki_fragmentu.append(wynik)
             
             # Aktualizacja statystyk
-            scores.extend(chunk_scores)
-            eps_history.append(agent.epsilon)
+            wyniki.extend(wyniki_fragmentu)
+            historia_ep.append(agent.epsilon)
             
             # Dodanie wszystkich doświadczeń do pamięci agenta
-            for exp in all_experiences:
-                agent.remember(*exp)
+            for exp in wszystkie_doświadczenia:
+                agent.zapamiętaj(*exp)
             
             # Uczenie agenta na zebranych doświadczeniach
             # W trybie GPU trenujemy intensywniej
-            train_iterations = min(len(all_experiences), 2000 if USE_GPU else 1000)
+            iteracje_treningu = min(len(wszystkie_doświadczenia), 2000 if UŻYJ_GPU else 1000)
             
-            total_loss = 0
-            loss_count = 0
-            for _ in range(train_iterations):
-                loss = agent.learn()
-                if loss is not None:
-                    total_loss += loss
-                    loss_count += 1
+            łączna_strata = 0
+            liczba_strat = 0
+            for _ in range(iteracje_treningu):
+                przegrana = agent.ucz_się()
+                if przegrana is not None:
+                    łączna_strata += przegrana
+                    liczba_strat += 1
             
-            if loss_count > 0:
-                avg_loss = total_loss / loss_count
+            if liczba_strat > 0:
+                średnia_strata = łączna_strata / liczba_strat
             
             # Aktualizacja paska postępu
-            pbar.update(actual_n)
+            pbar.update(rzeczywista_n)
             
-            # Wyświetlanie postępów co save_interval chunk'ów
-            current_episode = (chunk + 1) * n_parallel
-            if chunk % (save_interval // max(1, n_parallel)) == 0 or chunk == n_chunks - 1:
-                avg_score = np.mean(scores[-100:]) if len(scores) >= 100 else np.mean(scores)
-                recent_avg = np.mean(chunk_scores)
+            # Wyświetlanie postępów co interwał_zapisu fragment'ów
+            obecny_epizod = (fragment + 1) * liczba_równoległych
+            if fragment % (interwał_zapisu // max(1, liczba_równoległych)) == 0 or fragment == liczba_fragmentów - 1:
+                średni_wynik = np.mean(wyniki[-100:]) if len(wyniki) >= 100 else np.mean(wyniki)
+                ostatnio_średnia = np.mean(wyniki_fragmentu)
+    
+                print(f"\nEpizod {obecny_epizod}/{liczba_epizodów}:")
+                print(f"  Średni wynik: {średni_wynik:.4f}")
+                print(f"  Ostatni średni wynik: {ostatnio_średnia:.4f}")
+                print(f"  Epsilon: {agent.epsilon:.6f}")
+                print(f"  Strata: {średnia_strata:.6f}")
+                print(f"  Najlepszy wynik do tej pory: {najlepszy_wynik}")
+    
                 pbar.set_postfix({
-                    'Śr.wynik': f'{avg_score:.2f}',
-                    'Ost.wynik': f'{recent_avg:.2f}',
-                    'Epsilon': f'{agent.epsilon:.4f}',
-                    'Loss': f'{avg_loss:.4f}'
+                        'Śr.wynik': f'{średni_wynik:.2f}',
+                        'Ost.wynik': f'{ostatnio_średnia:.2f}',
+                        'Epsilon': f'{agent.epsilon:.4f}',
+                        'Loss': f'{średnia_strata:.4f}'
                 })
                 
-                # Zapisanie modelu co save_interval epizodów
-                if current_episode <= n_episodes:
-                    agent.save(f"models/snake_model_episode_{current_episode}.pth")
+                pbar.update(0)
+                # Zapisanie modelu co interwał_zapisu epizodów
+                if obecny_epizod <= liczba_epizodów:
+                    agent.save(f"models/snake_model_episode_{obecny_epizod}.pth")
             
             # Sprawdzenie, czy mamy nowy najlepszy wynik
-            max_score = max(chunk_scores) if chunk_scores else 0
-            if max_score > best_score:
-                best_score = max_score
+            maks_wynik = max(wyniki_fragmentu) if wyniki_fragmentu else 0
+            if maks_wynik > najlepszy_wynik:
+                najlepszy_wynik = maks_wynik
                 agent.save("models/snake_model_best.pth")
-                pbar.write(f"Nowy najlepszy wynik: {best_score}! Model zapisany jako 'snake_model_best.pth'")
+                pbar.write(f"Nowy najlepszy wynik: {najlepszy_wynik}! Model zapisany jako 'snake_model_best.pth'")
     
     # Zapisanie ostatecznego modelu
     agent.save("models/snake_model_final.pth")
     print("Trening zakończony. Ostateczny model zapisany jako 'snake_model_final.pth'")
     
-    return scores, eps_history
+    return wyniki, historia_ep
 
 
-def train_cpu_only(agent, game, n_episodes=1000, save_interval=100):
+def trenuj_tylko_cpu(agent, game, liczba_epizodów=1000, interwał_zapisu=100):
     """
     Trenuje agenta wyłącznie na CPU, bez zrównoleglenia.
     
     Args:
         agent (DQNAgent): Agent do trenowania.
         game (SnakeGame): Środowisko gry.
-        n_episodes (int): Liczba epizodów treningu.
-        save_interval (int): Co ile epizodów zapisywać model.
+        liczba_epizodów (int): Liczba epizodów treningu.
+        interwał_zapisu (int): Co ile epizodów zapisywać model.
         
     Returns:
         tuple: Para (wyniki, historia epsilon).
     """
-    scores = []
-    eps_history = []
-    best_score = 0
-    avg_loss = 0
+    wyniki = []
+    historia_ep = []
+    najlepszy_wynik = 0
+    średnia_strata = 0
     
     print("Trening tylko na CPU z pojedynczą grą.")
     
-    for e in tqdm(range(n_episodes), desc="Trening"):
+    for e in tqdm(range(liczba_epizodów), desc="Trening"):
         # Resetowanie gry i pobranie stanu początkowego
-        state = game.reset()
-        done = False
-        score = 0
-        total_loss = 0
-        step_count = 0
-        loss_count = 0
+        stan = game.reset()
+        zakończone = False
+        wynik = 0
+        łączna_strata = 0
+        liczba_kroków = 0
+        liczba_strat = 0
         
-        while not done:
+        while not zakończone:
             # Wybór akcji przez agenta
-            action = agent.get_action(state)
+            akcja = agent.pobierz_akcję(stan)
             
             # Wykonanie akcji w środowisku
-            next_state, reward, done, info = game.step(action)
+            następny_stan, nagroda, zakończone, info = game.krok(akcja)
             
             # Zapisanie doświadczenia w pamięci agenta
-            agent.remember(state, action, reward, next_state, done)
+            agent.zapamiętaj(stan, akcja, nagroda, następny_stan, zakończone)
             
             # Przejście do nowego stanu
-            state = next_state
+            stan = następny_stan
             
             # Uczenie agenta
-            loss = agent.learn()
-            if loss is not None:
-                total_loss += loss
-                loss_count += 1
+            przegrana = agent.ucz_się()
+            if przegrana is not None:
+                łączna_strata += przegrana
+                liczba_strat += 1
             
             # Aktualizacja wyniku
-            score = info  # info to obecny wynik
-            step_count += 1
+            wynik = info  # info to obecny wynik
+            liczba_kroków += 1
             
         # Zapisanie wyniku i wartości epsilon dla tego epizodu
-        scores.append(score)
-        eps_history.append(agent.epsilon)
+        wyniki.append(wynik)
+        historia_ep.append(agent.epsilon)
         
         # Obliczenie średniej straty
-        if loss_count > 0:
-            avg_loss = total_loss / loss_count
+        if liczba_strat > 0:
+            średnia_strata = łączna_strata / liczba_strat
         
-        # Wyświetlanie postępów co save_interval epizodów
-        if e % save_interval == 0 or e == n_episodes - 1:
-            avg_score = np.mean(scores[-100:]) if len(scores) >= 100 else np.mean(scores)
-            tqdm.write(f"Epizod {e}, Wynik: {score}, Średni wynik: {avg_score:.2f}, "
-                      f"Epsilon: {agent.epsilon:.4f}, Loss: {avg_loss:.4f}")
+        # Wyświetlanie postępów co interwał_zapisu epizodów
+        if e % interwał_zapisu == 0 or e == liczba_epizodów - 1:
+            średni_wynik = np.mean(wyniki[-100:]) if len(wyniki) >= 100 else np.mean(wyniki)
+            tqdm.write(f"Epizod {e}, Wynik: {wynik}, Średni wynik: {średni_wynik:.2f}, "
+                      f"Epsilon: {agent.epsilon:.4f}, Loss: {średnia_strata:.4f}")
             
-            # Zapisanie modelu co save_interval epizodów
+            # Zapisanie modelu co interwał_zapisu epizodów
             agent.save(f"models/snake_model_episode_{e}.pth")
             
         # Zapisanie najlepszego modelu
-        if score > best_score:
-            best_score = score
+        if wynik > najlepszy_wynik:
+            najlepszy_wynik = wynik
             agent.save("models/snake_model_best.pth")
-            tqdm.write(f"Nowy najlepszy wynik: {score}! Model zapisany jako 'snake_model_best.pth'")
+            tqdm.write(f"Nowy najlepszy wynik: {wynik}! Model zapisany jako 'snake_model_best.pth'")
     
     # Zapisanie ostatecznego modelu
     agent.save("models/snake_model_final.pth")
     print("Trening zakończony. Ostateczny model zapisany jako 'snake_model_final.pth'")
     
-    return scores, eps_history
+    return wyniki, historia_ep
 
 
-def plot_results(scores, eps_history):
+def rysuj_wyniki(wyniki, historia_ep):
     """
     Tworzy wykresy wyników treningu.
     
     Args:
-        scores (list): Lista wyników z każdego epizodu.
-        eps_history (list): Lista wartości epsilon z każdego epizodu.
+        wyniki (list): Lista wyników z każdego epizodu.
+        historia_ep (list): Lista wartości epsilon z każdego epizodu.
     """
     plt.figure(figsize=(16, 5))
     
     # Wykres wyników
     plt.subplot(1, 3, 1)
-    plt.plot(scores)
-    plt.axhline(y=np.mean(scores), color='r', linestyle='--', label=f'Średnia: {np.mean(scores):.2f}')
+    plt.plot(wyniki)
+    plt.axhline(y=np.mean(wyniki), color='r', linestyle='--', label=f'Średnia: {np.mean(wyniki):.2f}')
     plt.xlabel('Epizod')
     plt.ylabel('Wynik')
     plt.title('Wyniki w czasie treningu')
@@ -264,16 +262,16 @@ def plot_results(scores, eps_history):
     
     # Wykres średniej ruchomej
     plt.subplot(1, 3, 2)
-    window_size = min(100, len(scores))
-    moving_avg = [np.mean(scores[max(0, i-window_size):i+1]) for i in range(len(scores))]
-    plt.plot(moving_avg)
+    rozmiar_okna = min(100, len(wyniki))
+    ruchoma_średnia = [np.mean(wyniki[max(0, i-rozmiar_okna):i+1]) for i in range(len(wyniki))]
+    plt.plot(ruchoma_średnia)
     plt.xlabel('Epizod')
     plt.ylabel('Średnia z ostatnich 100 epizodów')
     plt.title('Średnia ruchoma wyników')
     
     # Wykres zmian epsilon
     plt.subplot(1, 3, 3)
-    plt.plot(eps_history)
+    plt.plot(historia_ep)
     plt.xlabel('Epizod')
     plt.ylabel('Epsilon')
     plt.title('Zmiana współczynnika eksploracji')
@@ -284,47 +282,47 @@ def plot_results(scores, eps_history):
     plt.show()
 
 
-def test_agent(agent, game, n_games=5, delay=100):
+def testuj_agenta(agent, game, liczba_gier=5, opóźnienie=100):
     """
     Testuje wytrenowanego agenta.
     
     Args:
         agent (DQNAgent): Wytrenowany agent.
         game (SnakeGame): Środowisko gry.
-        n_games (int): Liczba gier testowych.
-        delay (int): Opóźnienie między krokami (ms).
+        liczba_gier (int): Liczba gier testowych.
+        opóźnienie (int): Opóźnienie między krokami (ms).
     """
-    total_score = 0
-    max_score = 0
-    scores = []
+    łączny_wynik = 0
+    maks_wynik = 0
+    wyniki = []
     
-    for game_idx in range(n_games):
-        state = game.reset()
-        done = False
+    for indeks_gry in range(liczba_gier):
+        stan = game.reset()
+        zakończone = False
         
-        while not done:
+        while not zakończone:
             # Agent wybiera akcję bez eksploracji
-            state_tensor = torch.tensor(state, dtype=agent.dtype).unsqueeze(0).to(agent.device)
+            tensor_stanu = torch.tensor(stan, dtype=agent.typ_danych).unsqueeze(0).to(agent.device)
             with torch.no_grad():
-                q_values = agent.model(state_tensor)
-            action = torch.argmax(q_values).item()
+                wartości_q = agent.model(tensor_stanu)
+            akcja = torch.argmax(wartości_q).item()
             
             # Wykonanie akcji
-            state, reward, done, score = game.step(action)
+            stan, nagroda, zakończone, wynik = game.krok(akcja)
             
             # Opóźnienie, aby można było obserwować grę
-            if delay > 0:
-                pygame.time.delay(delay)
+            if opóźnienie > 0:
+                pygame.time.delay(opóźnienie)
             
-        total_score += score
-        scores.append(score)
-        max_score = max(max_score, score)
-        print(f"Gra {game_idx+1}, Wynik: {score}")
+        łączny_wynik += wynik
+        wyniki.append(wynik)
+        maks_wynik = max(maks_wynik, wynik)
+        print(f"Gra {indeks_gry+1}, Wynik: {wynik}")
     
-    avg_score = total_score / n_games
-    print(f"Średni wynik po {n_games} grach: {avg_score:.2f}")
-    print(f"Najlepszy wynik: {max_score}")
-    print(f"Wszystkie wyniki: {scores}")
+    średni_wynik = łączny_wynik / liczba_gier
+    print(f"Średni wynik po {liczba_gier} grach: {średni_wynik:.2f}")
+    print(f"Najlepszy wynik: {maks_wynik}")
+    print(f"Wszystkie wyniki: {wyniki}")
     
-    return avg_score, max_score, scores
+    return średni_wynik, maks_wynik, wyniki
             
