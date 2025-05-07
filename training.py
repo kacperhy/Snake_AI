@@ -7,21 +7,10 @@ import torch
 from tqdm import tqdm
 import matplotlib.pyplot as plt
 from snake_game import UproszczonySnake
-from config import USE_GPU
+from config import UŻYJ_GPU
 import pygame
 from agent import DQNAgent
-from typing import List, Tuple
-from typing import Dict
-from typing import Any
-from typing import Optional
-from typing import Union
-from typing import Callable
-from typing import Type
-from typing import Any
-from typing import Dict
-from typing import List
-from typing import Tuple
-from typing import Union        
+      
 
 def uruchom_epizod(agent, parametry_gry, maks_kroków=10000):
     """
@@ -45,10 +34,10 @@ def uruchom_epizod(agent, parametry_gry, maks_kroków=10000):
     
     while not zakończone and liczba_kroków < maks_kroków:
         # Wybór akcji przez agenta
-        akcja = agent.get_action(stan)
+        akcja = agent.pobierz_akcję(stan)
         
         # Wykonanie akcji w środowisku
-        następny_stan, nagroda, zakończone, wynik = game.step(akcja)
+        następny_stan, nagroda, zakończone, wynik = game.krok(akcja)
         
         # Zapisanie doświadczenia do późniejszego użycia
         doświadczenia.append((stan, akcja, nagroda, następny_stan, zakończone))
@@ -82,7 +71,7 @@ def trenuj_hybrydowo(agent, parametry_gry, liczba_epizodów=1000, aktualizacja_d
     średnia_strata = 0
     
     # Określamy tryb treningu na podstawie dostępności GPU
-    if USE_GPU:
+    if UŻYJ_GPU:
         print(f"Trening hybrydowy: zbieranie doświadczeń na CPU, trening na GPU.")
     else:
         print(f"Trening na CPU z {liczba_równoległych} równoległymi grami.")
@@ -111,16 +100,16 @@ def trenuj_hybrydowo(agent, parametry_gry, liczba_epizodów=1000, aktualizacja_d
             
             # Dodanie wszystkich doświadczeń do pamięci agenta
             for exp in wszystkie_doświadczenia:
-                agent.remember(*exp)
+                agent.zapamiętaj(*exp)
             
             # Uczenie agenta na zebranych doświadczeniach
             # W trybie GPU trenujemy intensywniej
-            iteracje_treningu = min(len(wszystkie_doświadczenia), 2000 if USE_GPU else 1000)
+            iteracje_treningu = min(len(wszystkie_doświadczenia), 2000 if UŻYJ_GPU else 1000)
             
             łączna_strata = 0
             liczba_strat = 0
             for _ in range(iteracje_treningu):
-                przegrana = agent.learn()
+                przegrana = agent.ucz_się()
                 if przegrana is not None:
                     łączna_strata += przegrana
                     liczba_strat += 1
@@ -136,13 +125,22 @@ def trenuj_hybrydowo(agent, parametry_gry, liczba_epizodów=1000, aktualizacja_d
             if fragment % (interwał_zapisu // max(1, liczba_równoległych)) == 0 or fragment == liczba_fragmentów - 1:
                 średni_wynik = np.mean(wyniki[-100:]) if len(wyniki) >= 100 else np.mean(wyniki)
                 ostatnio_średnia = np.mean(wyniki_fragmentu)
+    
+                print(f"\nEpizod {obecny_epizod}/{liczba_epizodów}:")
+                print(f"  Średni wynik: {średni_wynik:.4f}")
+                print(f"  Ostatni średni wynik: {ostatnio_średnia:.4f}")
+                print(f"  Epsilon: {agent.epsilon:.6f}")
+                print(f"  Strata: {średnia_strata:.6f}")
+                print(f"  Najlepszy wynik do tej pory: {najlepszy_wynik}")
+    
                 pbar.set_postfix({
-                    'Śr.wynik': f'{średni_wynik:.2f}',
-                    'Ost.wynik': f'{ostatnio_średnia:.2f}',
-                    'Epsilon': f'{agent.epsilon:.4f}',
-                    'Loss': f'{średnia_strata:.4f}'
+                        'Śr.wynik': f'{średni_wynik:.2f}',
+                        'Ost.wynik': f'{ostatnio_średnia:.2f}',
+                        'Epsilon': f'{agent.epsilon:.4f}',
+                        'Loss': f'{średnia_strata:.4f}'
                 })
                 
+                pbar.update(0)
                 # Zapisanie modelu co interwał_zapisu epizodów
                 if obecny_epizod <= liczba_epizodów:
                     agent.save(f"models/snake_model_episode_{obecny_epizod}.pth")
@@ -192,19 +190,19 @@ def trenuj_tylko_cpu(agent, game, liczba_epizodów=1000, interwał_zapisu=100):
         
         while not zakończone:
             # Wybór akcji przez agenta
-            akcja = agent.get_action(stan)
+            akcja = agent.pobierz_akcję(stan)
             
             # Wykonanie akcji w środowisku
-            następny_stan, nagroda, zakończone, info = game.step(akcja)
+            następny_stan, nagroda, zakończone, info = game.krok(akcja)
             
             # Zapisanie doświadczenia w pamięci agenta
-            agent.remember(stan, akcja, nagroda, następny_stan, zakończone)
+            agent.zapamiętaj(stan, akcja, nagroda, następny_stan, zakończone)
             
             # Przejście do nowego stanu
             stan = następny_stan
             
             # Uczenie agenta
-            przegrana = agent.learn()
+            przegrana = agent.ucz_się()
             if przegrana is not None:
                 łączna_strata += przegrana
                 liczba_strat += 1
@@ -310,11 +308,11 @@ def testuj_agenta(agent, game, liczba_gier=5, opóźnienie=100):
             akcja = torch.argmax(wartości_q).item()
             
             # Wykonanie akcji
-            stan, nagroda, zakończone, wynik = game.step(akcja)
+            stan, nagroda, zakończone, wynik = game.krok(akcja)
             
             # Opóźnienie, aby można było obserwować grę
             if opóźnienie > 0:
-                pygame.time.opóźnienie(opóźnienie)
+                pygame.time.delay(opóźnienie)
             
         łączny_wynik += wynik
         wyniki.append(wynik)

@@ -5,7 +5,7 @@ Moduł zawierający implementację modelu sieciowego dla agenta DQN.
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from config import USE_GPU, USE_FLOAT16
+from config import UŻYJ_GPU, UŻYJ_FLOAT16
 
 
 class QNetwork(nn.Module):

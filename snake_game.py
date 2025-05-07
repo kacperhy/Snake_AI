@@ -28,13 +28,13 @@ class Kierunek(Enum):
 
 class SnakeGame:
     """Pełna implementacja gry Snake z interfejsem graficznym do testowania."""
-    def __init__(self):
+    def __init__(self, szerokość=SZEROKOŚĆ_OKNA, wysokość=WYSOKOŚĆ_OKNA, rozmiar_bloku=ROZMIAR_BLOKU):
         # Inicjalizacja parametrów gry
-        self.szerokość = SZEROKOŚĆ_OKNA
-        self.wysokość = WYSOKOŚĆ_OKNA
-        self.rozmiar_bloku = ROZMIAR_BLOKU
-        self.ekran = pygame.ekran.set_mode((SZEROKOŚĆ_OKNA, WYSOKOŚĆ_OKNA))
-        pygame.ekran.set_caption('Snake AI - PyTorch')
+        self.szerokość = szerokość
+        self.wysokość =    wysokość
+        self.rozmiar_bloku = rozmiar_bloku
+        self.display = pygame.display.set_mode((szerokość, wysokość))
+        pygame.display.set_caption('Snake AI - PyTorch')
         self.zegar = pygame.time.Clock()
         self.reset()
     
@@ -223,33 +223,33 @@ class SnakeGame:
     
     def _aktualizuj_ui(self):
         # Aktualizacja interfejsu graficznego
-        self.ekran.fill(CZARNY)
+        self.display.fill(CZARNY)
         
         # Rysowanie węża
         for pt in self.snake:
-            pygame.draw.rect(self.ekran, ZIELONY, pygame.Rect(pt[0], pt[1], self.rozmiar_bloku, self.rozmiar_bloku))
-            pygame.draw.rect(self.ekran, CIEMNY_ZIELONY, pygame.Rect(pt[0] + 4, pt[1] + 4, self.rozmiar_bloku - 8, self.rozmiar_bloku - 8))
+            pygame.draw.rect(self.display, ZIELONY, pygame.Rect(pt[0], pt[1], self.rozmiar_bloku, self.rozmiar_bloku))
+            pygame.draw.rect(self.display, CIEMNY_ZIELONY, pygame.Rect(pt[0] + 4, pt[1] + 4, self.rozmiar_bloku - 8, self.rozmiar_bloku - 8))
             
         # Rysowanie jedzenia
-        pygame.draw.rect(self.ekran, CZERWONY, pygame.Rect(self.jedzenie[0], self.jedzenie[1], self.rozmiar_bloku, self.rozmiar_bloku))
+        pygame.draw.rect(self.display, CZERWONY, pygame.Rect(self.jedzenie[0], self.jedzenie[1], self.rozmiar_bloku, self.rozmiar_bloku))
         
         # Wyświetlanie wyniku
         czcionka = pygame.czcionka.SysFont('arial', 25)
         tekst = czcionka.render(f"Wynik: {self.wynik}", True, BIAŁY)
-        self.ekran.blit(tekst, [0, 0])
-        pygame.ekran.flip()
+        self.display.blit(tekst, [0, 0])
+        pygame.display.flip()
 
 
 class UproszczonySnake:
     """Uproszczona wersja gry Snake bez interfejsu graficznego, zoptymalizowana pod kątem szybkości."""
-    def __init__(self):
+    def __init__(self, szerokość=SZEROKOŚĆ_OKNA, wysokość=WYSOKOŚĆ_OKNA, rozmiar_bloku=ROZMIAR_BLOKU):
         # Inicjalizacja parametrów gry bez interfejsu graficznego
-        self.szerokość = SZEROKOŚĆ_OKNA
-        self.wysokość = WYSOKOŚĆ_OKNA
-        self.rozmiar_bloku = ROZMIAR_BLOKU
+        self.szerokość =   szerokość
+        self.wysokość = wysokość
+        self.rozmiar_bloku = rozmiar_bloku
         # Prekompilacja stałych
-        self.max_x = (SZEROKOŚĆ_OKNA // ROZMIAR_BLOKU) - 1
-        self.max_y = (WYSOKOŚĆ_OKNA // ROZMIAR_BLOKU) - 1
+        self.max_x = (szerokość // rozmiar_bloku) - 1
+        self.max_y = (wysokość // rozmiar_bloku) - 1
         self.reset()
     
     def reset(self):

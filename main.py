@@ -7,7 +7,7 @@ import pygame
 from snake_game import SnakeGame
 from model import QNetwork
 from agent import DQNAgent
-from training import train_hybrid, train_cpu_only, plot_results, test_agent
+from training import trenuj_hybrydowo, trenuj_tylko_cpu, rysuj_wyniki, testuj_agenta
 from config import (
     UŻYJ_GPU, UŻYJ_FLOAT16, LICZBA_WĄTKÓW_CPU, SZEROKOŚĆ_OKNA, 
     WYSOKOŚĆ_OKNA, ROZMIAR_BLOKU, PRĘDKOŚĆ_GRY, ROZMIAR_UKRYTY, KATALOG_MODELI
@@ -92,11 +92,11 @@ def main():
             else:
                 nazwa_pliku = input("Podaj ścieżkę do pliku modelu: ")
             
-            if agent.load(nazwa_pliku):
+            if agent.wczytaj(nazwa_pliku):
                 # Testowanie modelu
                 liczba_gier = int(input("\nPodaj liczbę gier testowych: ") or "5")
                 opóźnienie = int(input("Opóźnienie między krokami (ms, 0-500): ") or "100")
-                test_agent(agent, game, liczba_gier, opóźnienie)
+                testuj_agenta(agent, game, liczba_gier, opóźnienie)
         else:
             print("Brak dostępnych modeli.")
             if input("Czy chcesz trenować nowy model? (t/n): ").lower() == 't':
@@ -104,15 +104,15 @@ def main():
                 liczba_epizodów = int(input("\nPodaj liczbę epizodów treningu: ") or "1000")
                 interwał_zapisu = int(input("Co ile epizodów zapisywać model: ") or "100")
                 
-                wyniki, historia_ep = train_hybrid(agent, parametry_gry, liczba_epizodów, interwał_zapisu=interwał_zapisu)
+                wyniki, historia_ep = trenuj_hybrydowo(agent, parametry_gry, liczba_epizodów, interwał_zapisu=interwał_zapisu)
                 
                 # Wizualizacja wyników treningu
-                plot_results(wyniki, historia_ep)
+                rysuj_wyniki(wyniki, historia_ep)
                 
                 # Test wytrenowanego agenta
                 liczba_gier = int(input("\nPodaj liczbę gier testowych: ") or "5")
                 opóźnienie = int(input("Opóźnienie między krokami (ms, 0-500): ") or "100")
-                test_agent(agent, game, liczba_gier, opóźnienie)
+                testuj_agenta(agent, game, liczba_gier, opóźnienie)
     
     elif wybor == '2':
         # Trenowanie nowego modelu (tylko CPU)
@@ -131,18 +131,18 @@ def main():
         print("Ten tryb używa pojedynczej gry i wizualizacji.")
         
         # Trenowanie agenta
-        wyniki, historia_ep = train_cpu_only(agent, game, liczba_epizodów, interwał_zapisu=interwał_zapisu)
+        wyniki, historia_ep = trenuj_tylko_cpu(agent, game, liczba_epizodów, interwał_zapisu=interwał_zapisu)
         
         # Przywracamy poprzednie ustawienie GPU
         config.UŻYJ_GPU = stare_użyj_gpu
         
         # Wizualizacja wyników treningu
-        plot_results(wyniki, historia_ep)
+        rysuj_wyniki(wyniki, historia_ep)
         
         # Test wytrenowanego agenta
         liczba_gier = int(input("\nPodaj liczbę gier testowych: ") or "5")
         opóźnienie = int(input("Opóźnienie między krokami (ms, 0-500): ") or "100")
-        test_agent(agent, game, liczba_gier, opóźnienie)
+        testuj_agenta(agent, game, liczba_gier, opóźnienie)
     
     elif wybor == '3':
         # Trenowanie nowego modelu (tryb hybrydowy - zoptymalizowany)
@@ -162,15 +162,15 @@ def main():
             print("Trening będzie prowadzony wyłącznie na CPU.")
         
         # Trenowanie agenta w trybie hybrydowym
-        wyniki, historia_ep = train_hybrid(agent, parametry_gry, liczba_epizodów, interwał_zapisu=interwał_zapisu, liczba_równoległych=liczba_równoległych)
+        wyniki, historia_ep = trenuj_hybrydowo(agent, parametry_gry, liczba_epizodów, interwał_zapisu=interwał_zapisu, liczba_równoległych=liczba_równoległych)
         
         # Wizualizacja wyników treningu
-        plot_results(wyniki, historia_ep)
+        rysuj_wyniki(wyniki, historia_ep)
         
         # Test wytrenowanego agenta
         liczba_gier = int(input("\nPodaj liczbę gier testowych: ") or "5")
         opóźnienie = int(input("Opóźnienie między krokami (ms, 0-500): ") or "100")
-        test_agent(agent, game, liczba_gier, opóźnienie)
+        testuj_agenta(agent, game, liczba_gier, opóźnienie)
     
     elif wybor == '4':
         # Zmiana ustawień sprzętowych
@@ -182,8 +182,8 @@ def main():
         print(f"Liczba wątków CPU: {config.LICZBA_WĄTKÓW_CPU}")
         
         if torch.cuda.is_available():
-            use_gpu = input("\nCzy używać GPU do treningu? (t/n): ").lower()
-            config.UŻYJ_GPU = use_gpu == 't' or use_gpu == 'tak'
+            użyj_gpu = input("\nCzy używać GPU do treningu? (t/n): ").lower()
+            config.UŻYJ_GPU = użyj_gpu == 't' or użyj_gpu == 'tak'
             
             if config.UŻYJ_GPU:
                 use_fp16 = input("Czy używać niższej precyzji (float16) dla szybszego treningu? (t/n): ").lower()
@@ -232,7 +232,7 @@ def main():
             else:
                 nazwa_pliku = input("Podaj ścieżkę do pliku modelu: ")
         
-            if agent.load(nazwa_pliku):
+            if agent.wczytaj(nazwa_pliku):
                 # Wybór trybu treningu
                 print("\nWybierz tryb kontynuacji treningu:")
                 print("1. Tryb CPU")
@@ -262,7 +262,7 @@ def main():
                 # Kontynuacja treningu
                 if train_mode == '1':
                     # Tryb CPU
-                    train_function = train_cpu_only
+                    train_function = trenuj_tylko_cpu
                     wyniki, historia_ep = agent.continue_training(
                         train_function, game, liczba_epizodów=liczba_epizodów, 
                         interwał_zapisu=interwał_zapisu, force_device=force_device,
@@ -271,7 +271,7 @@ def main():
                 else:
                     # Tryb hybrydowy
                     liczba_równoległych = int(input(f"Podaj liczbę równoległych gier (zalecane: {LICZBA_WĄTKÓW_CPU}-16): ") or str(LICZBA_WĄTKÓW_CPU))
-                    train_function = train_hybrid
+                    train_function = trenuj_hybrydowo
                     wyniki, historia_ep = agent.continue_training(
                         train_function, parametry_gry, liczba_epizodów=liczba_epizodów, 
                         interwał_zapisu=interwał_zapisu, force_device=force_device,
@@ -279,12 +279,12 @@ def main():
                     )
             
                 # Wizualizacja wyników treningu
-                plot_results(wyniki, historia_ep)
+                rysuj_wyniki(wyniki, historia_ep)
             
                 # Test wytrenowanego agenta
                 liczba_gier = int(input("\nPodaj liczbę gier testowych: ") or "5")
                 opóźnienie = int(input("Opóźnienie między krokami (ms, 0-500): ") or "100")
-                test_agent(agent, game, liczba_gier, opóźnienie)
+                testuj_agenta(agent, game, liczba_gier, opóźnienie)
         else:
             print("Brak dostępnych modeli. Najpierw wytrenuj jakiś model.")
 
