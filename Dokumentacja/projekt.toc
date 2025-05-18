@@ -1,0 +1,14 @@
+\babel@toc {polish}{}\relax 
+\contentsline {section}{\numberline {1}Cel projektu}{1}{}%
+\contentsline {section}{\numberline {2}Część teoretyczna}{2}{}%
+\contentsline {subsection}{\numberline {2.1}Model neuronu}{2}{}%
+\contentsline {subsection}{\numberline {2.2}Sieć neuronowa wielowarstwowa (MLP)}{2}{}%
+\contentsline {subsection}{\numberline {2.3}MLP w projekcie Snake AI}{4}{}%
+\contentsline {subsection}{\numberline {2.4}Funkcje aktywacji}{4}{}%
+\contentsline {subsection}{\numberline {2.5}Wprowadzenie do uczenia ze wzmocnieniem i MDP}{6}{}%
+\contentsline {subsection}{\numberline {2.6}Klasyczny algorytm Q-learning}{7}{}%
+\contentsline {subsection}{\numberline {2.7}Deep Q-Network (DQN)}{8}{}%
+\contentsline {section}{\numberline {3}Analiza Danych}{10}{}%
+\contentsline {section}{\numberline {4}Skrypt programu}{10}{}%
+\contentsline {section}{\numberline {5}Eksperymenty}{10}{}%
+\contentsline {section}{\numberline {6}Podsumowanie i wnioski}{10}{}%
