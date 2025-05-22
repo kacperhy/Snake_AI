@@ -26,10 +26,10 @@ WSPÓŁCZYNNIK_UCZENIA = 0.0003  # Współczynnik uczenia
 
 # Parametry treningu
 ROZMIAR_PARTII = 256  # Rozmiar batcha
-GAMMA = 0.98  # Współczynnik dyskontowania przyszłych nagród
+GAMMA = 0.99  # Współczynnik dyskontowania przyszłych nagród
 EPSILON_START = 1.0  # Początkowa wartość współczynnika eksploracji
 EPSILON_MIN = 0.01  # Minimalna wartość współczynnika eksploracji
-SPADEK_EPSILON = 0.995  # Współczynnik zmniejszania epsilon
+SPADEK_EPSILON = 0.999  # Współczynnik zmniejszania epsilon
 
 # Ustawienie ziarna dla generatorów liczb losowych (spójność między uruchomieniami)
 RANDOM_SEED = 42

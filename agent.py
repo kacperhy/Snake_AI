@@ -11,7 +11,11 @@ import torch.optim as optim
 from collections import deque
 import threading
 from model import QNetwork
-from config import UŻYJ_GPU, UŻYJ_FLOAT16, ROZMIAR_BUFORA_DOŚWIADCZEŃ
+from config import (
+    UŻYJ_GPU, UŻYJ_FLOAT16, ROZMIAR_BUFORA_DOŚWIADCZEŃ,
+    ROZMIAR_UKRYTY, WSPÓŁCZYNNIK_UCZENIA, GAMMA, EPSILON_START,
+    EPSILON_MIN, SPADEK_EPSILON, ROZMIAR_PARTII
+)
 
 #minimalne wymagania dla GPU
 class BuforDoświadczeń:
@@ -91,16 +95,16 @@ class DQNAgent:
         model (QNetwork): Główna sieć neuronowa.
         model_docelowy (QNetwork): Sieć docelowa do stabilizacji uczenia.
     """
-    def __init__(self, rozmiar_stanu, rozmiar_akcji, rozmiar_ukryty=256, współczynnik_uczenia=0.0003):
+    def __init__(self, rozmiar_stanu, rozmiar_akcji, rozmiar_ukryty=256, współczynnik_uczenia=WSPÓŁCZYNNIK_UCZENIA):
         self.rozmiar_stanu = rozmiar_stanu
         self.rozmiar_akcji = rozmiar_akcji
         
         # Parametry uczenia
-        self.gamma = 0.99 # Współczynnik dyskontowania przyszłych nagród
-        self.epsilon = 1.0  # Współczynnik eksploracji
-        self.epsilon_min = 0.1
-        self.spadek_epsilon = 0.999
-        self.rozmiar_partii = 256 if UŻYJ_GPU else 64  # Większy partia na GPU, mniejszy na CPU
+        self.gamma = GAMMA # Współczynnik dyskontowania przyszłych nagród
+        self.epsilon = EPSILON_START  # Współczynnik eksploracji
+        self.epsilon_min = EPSILON_MIN
+        self.spadek_epsilon = SPADEK_EPSILON
+        self.rozmiar_partii = ROZMIAR_PARTII if UŻYJ_GPU else 64  # Większy partia na GPU, mniejszy na CPU
         self.częstotliwość_aktualizacji = 2  # Co ile kroków aktualizować model
         self.wykonane_kroki = 0
         self.częstotliwość_aktualizacji_docelowej = 1000  # Co ile kroków aktualizować model docelowy
