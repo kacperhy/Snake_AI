@@ -65,7 +65,7 @@
   \pagenumbering{arabic}
 
   \section{Cel projektu}
-Celem niniejszego projektu jest opracowanie, implementacja oraz porównawcza analiza dwóch metod uczenia ze wzmocnieniem w zmodyfikowanym środowisku gry Snake, w którym agent ponosi karę za kolizję ze ścianami. W pierwszym podejściu zastosowano klasyczny algorytm Q-learning, natomiast w drugim – jego rozszerzenie o głęboką sieć neuronową (Deep Q-Network, DQN).
+Celem niniejszego projektu jest opracowanie, implementacja oraz porównawcza analiza dwóch metod uczenia ze wzmocnieniem w zmodyfikowanym środowisku gry Snake, w którym agent ponosi karę za kolizję ze ścianami. W ramach projektu zostanie zaimplementowany wariant Q-learningu wspierany przez sieć neuronową (Deep Q-Network, DQN).
 
 W ramach projektu zostanie utworzone środowisko symulacyjne, w którym agent będzie zobligowany do identyfikacji kluczowych elementów otoczenia, takich jak obszary zagrożenia oraz źródła pożywienia, a następnie do podejmowania decyzji na podstawie obserwowanych stanów. Ponadto zaimplementowany zostanie wariant Double DQN, a proces uczenia zostanie przyspieszony poprzez integrację technologii CUDA, z zapewnieniem możliwości alternatywnego przeprowadzenia treningu na procesorze centralnym w przypadku braku wsparcia GPU.
 
@@ -159,20 +159,6 @@ Działanie całej sieci można więc opisać jako
 \cite{RZajdelMLP}
 
 
-
-W projekcie Snake AI do aproksymacji funkcji wartości $Q(s,a)$ wykorzystujemy wielowarstwową sieć neuronową (MLP) o strukturze:
-
-\begin{itemize}
-\item Warstwa wejściowa: wymiar wektora stanu $d=11$ cech,
-\item trzy warstwy ukryte:
-\begin{itemize}
-\item pierwsza z $H_1=256$ neuronów,
-\item druga z $H_2=256$ neuronów,
-\item trzecia z $H_3 = 128$ neuronów,
-\end{itemize}
-\item Warstwa wyjściowa: liczba wyjść równa liczbie akcji $|A|=3$.
-\end{itemize}
-
 \subsection{MLP w projekcie Snake AI}
 W projekcie Snake AI do aproksymacji funkcji wartości Q(s,a) wykorzystujemy wielowarstwową sieć neuronową (MLP) składającą się z warstwy wejściowej, dwóch warstw ukrytych i warstwy wyjściowej. 
 
@@ -209,13 +195,8 @@ x & \text{jeśli } x > 0 \\
 \end{cases}
 \end{equation}
 
-lub w bardziej zwartej postaci:
 
-\begin{equation}
-f(x) = \max(\alpha x, x),
-\end{equation}
-
-gdzie \(\alpha\) to mała wartość (w naszym projekcie \(0{,}01\)), która kontroluje nachylenie dla wartości ujemnych. W sieci DQN używamy Leaky ReLU we wszystkich warstwach ukrytych.
+gdzie \(\alpha\) to mała wartość (w projekcie \(0{,}01\)), która kontroluje nachylenie dla wartości ujemnych. W sieci DQN używamy Leaky ReLU we wszystkich warstwach ukrytych.
 
 \medskip
 
@@ -237,7 +218,7 @@ Funkcja liniowa w warstwie wyjściowej sieci DQN została wybrana ze względu na
 \begin{enumerate}[label=\textbf{\arabic*.}, leftmargin=1.5cm]
     \item \textbf{Nieograniczony zakres wartości wyjściowych} – w kontekście aproksymacji funkcji wartości \(Q\), wyjścia sieci mogą przyjmować dowolne wartości rzeczywiste. Funkcja liniowa nie wprowadza żadnych ograniczeń zakresu wartości wyjściowych, co jest kluczowe dla poprawnego przewidywania wartości funkcji \(Q\).
 
-    \item \textbf{Zgodność z teorią DQN} – w oryginalnej publikacji opisującej algorytm Deep Q-Network autorstwa Mnih et al. (2015), również zastosowano liniową funkcję aktywacji w warstwie wyjściowej, co potwierdza zasadność wyboru tego rozwiązania.
+    \item \textbf{Zgodność z teorią DQN} – w oryginalnej publikacji opisującej algorytm Q-learningu \cite{mnih2015human}, również zastosowano liniową funkcję aktywacji w warstwie wyjściowej, co potwierdza zasadność wyboru tego rozwiązania.
 
     \item \textbf{Rozwiązanie problemu "umierających neuronów":} Standardowa funkcja ReLU zwraca 0 dla wszystkich wartości ujemnych, co może prowadzić do "umierania neuronów", kiedy neuron zawsze daje wartość 0 na wyjściu. LeakyReLU rozwiązuje ten problem, pozwalając na przepływ małego gradientu dla wartości ujemnych.
 \end{enumerate}
@@ -319,12 +300,12 @@ Q(s,a) \;\leftarrow\; Q(s,a) + \alpha\bigl[r + \gamma \max_{a'} Q(s',a') \;-\; Q
 \end{equation}
 Powyższa reguła aktualizacji jest implementacją iteracji Bellmana na podstawie pojedynczych doświadczeń. Intuicyjnie, jeśli zaobserwowana natychmiastowa nagroda \(r\) wraz z najlepszą przewidywaną wartością przyszłą \(\max_{a'} Q(s',a')\) przewyższa dotychczasową ocenę \(Q(s,a)\), to \(Q(s,a)\) zostanie zwiększone (i odwrotnie – przeszacowane wartości są zmniejszane). Współczynnik \(\alpha\) reguluje szybkość uczenia: małe \(\alpha\) sprawia, że wartości zmieniają się wolniej (co uśrednia wiele doświadczeń), natomiast \(\alpha = 1\) oznacza całkowite zastąpienie starej wartości nowym jednorazowym oszacowaniem. Dzięki niezależności aktualizacji od konkretnej strategii wyboru akcji (algorytm off-policy), Q-learning w teorii konwerguje do \(Q^*\) nawet jeśli podczas uczenia agent nie zawsze podąża strategią zachłanną.
 
-Algorytm Q-learning stopniowo poprawia przybliżenia wartości akcji. Z czasem, gdy \(Q(s,a)\) zbliża się do wartości optymalnych, strategia zachłanna względem tych wartości staje się strategią optymalną \(\pi^*\). W praktyce tablicowy Q-learning jest stosowany tylko dla stosunkowo niewielkich i dyskretnych przestrzeni stanów, ponieważ przechowywanie i aktualizacja tablicy \(Q(s,a)\) w większych problemach (np.\ gdy stanem jest obraz Atari) jest niewykonalne. Rozwiązaniem problemu skalowalności jest zastąpienie tablicy \(Q\) funkcją przybliżającą – tu z pomocą przychodzi sieć neuronowa\(^*\).
+Algorytm Q-learning stopniowo poprawia przybliżenia wartości akcji. Z czasem, gdy \(Q(s,a)\) zbliża się do wartości optymalnych, strategia zachłanna względem tych wartości staje się strategią optymalną \(\pi^*\). W praktyce tablicowy Q-learning jest stosowany tylko dla stosunkowo niewielkich i dyskretnych przestrzeni stanów, ponieważ przechowywanie i aktualizacja tablicy \(Q(s,a)\) w większych problemach (np.\ gdy stanem jest obraz Atari) jest niewykonalne. Rozwiązaniem problemu skalowalności jest zastąpienie tablicy \(Q\) funkcją przybliżającą – tu z pomocą przychodzi sieć neuronowa.
 
 \subsection{Deep Q-Network (DQN)}
 
 Deep Q-Network (DQN) to algorytm, który łączy klasyczny Q-learning z możliwościami głębokich sieci neuronowych do aproksymacji funkcji wartości \(Q\). Fundamentalna koncepcja polega na zastąpieniu tablicy \(Q(s,a)\) przez sieć neuronową \(Q(s,a;\theta)\) parametryzowaną wektorem \(\theta\). Sieć przyjmuje na wejściu reprezentację stanu \(s\) i generuje na wyjściu estymowane wartości \(Q(s,a)\) dla zbioru dostępnych akcji. Dzięki temu podejściu algorytm uzyskuje zdolność skalowania do rozległych (w tym ciągłych) przestrzeni stanów, realizując generalizację – tj. aproksymując podobne wartości dla stanów wykazujących wspólne cechy, co pozostaje poza zasięgiem tablicowego Q-learningu.
-W implementacji DQN przyjęto strukturę czterowarstwowej sieci neuronowej typu MLP (Multi-Layer Perceptron).
+W implementacji DQN przyjęto strukturę sieci neuronowej typu MLP (Multi-Layer Perceptron).
 
 \subsubsection{Metodologia treningu}
 
@@ -347,9 +328,9 @@ Następnie definiowana jest funkcja straty. W implementacji wykorzystano funkcj�
 \delta\bigl(|y - Q(s,a;\theta)| - \tfrac12\delta\bigr), & \text{jeśli } |y - Q(s,a;\theta)| > \delta.
 \end{cases}
 \end{equation}
-gdzie \(\delta\) stanowi parametr delimitujący przejście między kwadratową a liniową charakterystyką funkcji straty (przyjęto \(\delta=1\)). Funkcja Hubera zapewnia, że dla znacznych odchyleń model nie generuje nieograniczonych wartości gradientu (jak ma to miejsce w funkcji MSE), co zabezpiecza przed niestabilnością uczenia wywołaną zjawiskiem eksplozji gradientów. 
+gdzie \(\delta\) stanowi parametr delimitujący przejście między kwadratową a liniową charakterystyką funkcji straty (przyjęto \(\delta=1\)). Funkcja Hubera zapewnia, że dla znacznych odchyleń model nie generuje nieograniczonych wartości gradientu, co zabezpiecza przed niestabilnością uczenia wywołaną zjawiskiem eksplozji gradientów. 
 
-W implementacji wykorzystano optymalizator Adam (w przypadku obliczeń na CPU) lub AdamW (w przypadku obliczeń na GPU) ze współczynnikiem uczenia \(\alpha=0.0003\). AdamW wprowadza regularyzację typu Weight Decay, co przyczynia się do zwiększenia stabilności procesu uczenia na architekturach GPU. Dodatkowo zastosowano technikę przycinania gradientów (gradient clipping) do normy jednostkowej, co stanowi kolejny mechanizm stabilizujący proces treningu.
+W implementacji wykorzystano optymalizator Adam (w przypadku obliczeń na CPU) lub AdamW (w przypadku obliczeń na GPU) ze współczynnikiem uczenia \(\alpha=0.0003\). AdamW wprowadza regularyzację typu Weight Decay\footnote{\textbf{Weight Decay} to technika mająca na celu zapobieganie nadmiernemu dopasowaniu modelu (overfitting) oraz poprawę stabilności i uogólniającej zdolności sieci neuronowej przez karanie dużych wartości wag}, co przyczynia się do zwiększenia stabilności procesu uczenia na architekturach GPU. Dodatkowo zastosowano technikę przycinania gradientów (gradient clipping) do normy jednostkowej, co stanowi kolejny mechanizm stabilizujący proces treningu.
 
 \subsubsection{Mechanizm Experience Replay}
 
@@ -980,20 +961,20 @@ class BuforDoświadczeń:
         return tensor_stanów, tensor_akcji, tensor_nagród, tensor_następnych_stanów, tensor_zakończonych
     
     def pobierz_wstępnie_batch(self, rozmiar_partii):
-        """Wstępnie pobiera partia w osobnym wątku dla szybszego dostępu."""
+        """Wstępnie pobiera partie w osobnym wątku dla szybszego dostępu."""
         if not self.czy_pobieranie_wstępne and len(self.bufor) >= rozmiar_partii:
             self.czy_pobieranie_wstępne = True
             threading.Thread(target=self._wątek_wstępnego_pobierania, args=(rozmiar_partii,)).start()
     
     def _wątek_wstępnego_pobierania(self, rozmiar_partii):
-        """Wątek pobierający partia."""
+        """Wątek pobierający partie."""
         partia = self.sample(rozmiar_partii)
         with self.blokada_pobierania:
             self.wstępnie_pobrany_batch = partia
             self.czy_pobieranie_wstępne = False
     
     def pobierz_wstępnie_pobrany_batch(self):
-        """Pobiera wcześniej pobrany partia lub tworzy nowy jeśli nie ma."""
+        """Pobiera wcześniej pobrany partie lub tworzy nowy jeśli nie ma."""
         with self.blokada_pobierania:
             partia = self.wstępnie_pobrany_batch
             self.wstępnie_pobrany_batch = None
@@ -2016,6 +1997,7 @@ Niniejsze badanie koncentruje się na systematycznej analizie wpływu różnych 
 
 Celem badania jest identyfikacja architektury oferującej optymalny kompromis między złożonością obliczeniową a efektywnością uczenia. Wyniki dostarczają praktycznych wskazówek dotyczących projektowania sieci neuronowych w kontekście algorytmów DQN dla podobnych środowisk decyzyjnych, prowadząc do bardziej efektywnych implementacji uczenia przez wzmacnianie w praktycznych zastosowaniach.
 
+
 \textbf{Parametry dla wszystkich architektur sieci neuronowych są następujące:}
 \begin{itemize}
     \item \textbf{Liczba epizodów:} 5000
@@ -2052,17 +2034,19 @@ Celem badania jest identyfikacja architektury oferującej optymalny kompromis mi
     \centering
     \includegraphics[width=1\linewidth]{porównanie_architektur.png}
     \caption{Porównanie sieci według średniego wyniku i średniej straty}
+    \label{fig:porównanie_architektur}
 \end{figure}
 
 \begin{figure}[H]
     \centering
     \includegraphics[width=1\linewidth]{historia_treningu_Oryginalna_sieć_(QNetwork).png}
     \caption{Wynik oryginalnej sieci (QNetwork) w grze Snake}
+    \label{fig:historia_treningu}
 \end{figure}
 
 \subsubsection{Wnioski}
 
-Na podstawie przeprowadzonego eksperymentu porównującego różne architektury sieci neuronowych w algorytmie Deep Q-Network dla gry \emph{Snake} można sformułować następujące wnioski:
+Na podstawie przeprowadzonego eksperymentu porównującego różne architektury sieci neuronowych w algorytmie Deep Q-Network dla gry \emph{Snake} można sformułować na podstawie tabeli~\ref{tab:architektury} i rysunków \ref{fig:porównanie_architektur}, \ref{fig:historia_treningu}  następujące wnioski:
 
 \begin{enumerate}
   \item \textbf{Przewaga architektury oryginalnej.}  
@@ -2118,7 +2102,7 @@ Podsumowując, dla problemu uczenia agenta gry \emph{Snake} algorytmem DQN wielo
     \item Rozmiar bloku: 40
 \end{itemize}
 
-  Parametry treningu CPU to:
+  Parametry treningu CPU w rysunku \ref{fig:wyniki_treningu_cpu} to:
     \begin{itemize}
         \item Rozmiar partii: 64
         \item Czas treningu: 45 minut
@@ -2133,7 +2117,8 @@ Podsumowując, dla problemu uczenia agenta gry \emph{Snake} algorytmem DQN wielo
     \caption{Wyniki treningu agenta w grze Snake z użyciem CPU (1000 epizodów)}
     \label{fig:wyniki_treningu_cpu}
 \end{figure}
- Parametry treningu GPU to:
+\clearpage
+ Parametry treningu GPU w rysunku \ref{fig:wyniki_treningu_gpu} to:
 \begin{itemize}
     \item Rozmiar partii: 256
     \item częstotliwość aktualizacji modelu: 2
@@ -2154,7 +2139,7 @@ Podsumowując, dla problemu uczenia agenta gry \emph{Snake} algorytmem DQN wielo
 
 \subsubsection{Metodologia badawcza}
 
-Przeprowadzono eksperymentalną analizę porównawczą procesu treningu głębokiej sieci Q-learning (DQN) w kontekście implementacji agenta dla gry Snake. Eksperyment realizowano na dwóch platformach obliczeniowych: centralnej jednostce przetwarzania (CPU) oraz jednostce przetwarzania graficznego (GPU), przy zachowaniu identycznych parametrów uczenia dla obu implementacji, z wyjątkiem rozmiaru partii dostosowanego do specyfiki architektury (\(n_{batch}^{CPU} = 64\), \(n_{batch}^{GPU} = 256\)).
+Przeprowadzono eksperymentalną analizę porównawczą wyników z rysunków \ref{fig:wyniki_treningu_cpu}, \ref{fig:wyniki_treningu_gpu} procesu treningu głębokiej sieci Q-learning (DQN) w kontekście implementacji agenta dla gry Snake. Eksperyment realizowano na dwóch platformach obliczeniowych: centralnej jednostce przetwarzania (CPU) oraz jednostce przetwarzania graficznego (GPU), przy zachowaniu identycznych parametrów uczenia dla obu implementacji, z wyjątkiem rozmiaru partii dostosowanego do specyfiki architektury (\(n_{batch}^{CPU} = 64\), \(n_{batch}^{GPU} = 256\)).
 
 \subsubsection{Rezultaty eksperymentalne}
 
@@ -2162,10 +2147,10 @@ Przeprowadzono eksperymentalną analizę porównawczą procesu treningu głębok
 Analiza eksperymentalna wykazała istotną dysproporcję w wydajności obliczeniowej między platformami CPU i GPU, manifestującą się redukcją czasu treningu zgodnie z zależnością:
 
 \begin{equation}
-E_{czasowa} = \frac{t_{CPU}}{t_{GPU}} = \frac{45~\text{min}}{3,5~\text{min}} \approx 12,86
+S = \frac{t_{CPU}}{t_{GPU}} = \frac{45~\text{min}}{3,5~\text{min}} \approx 12,86
 \end{equation}
 
-\noindent gdzie \(E_{czasowa}\) oznacza współczynnik efektywności czasowej, \(t_{CPU}\) oraz \(t_{GPU}\) czas treningu dla odpowiednich platform.
+\noindent gdzie S oznacza współczynnik efektywności czasowej, \(t_{CPU}\) oraz \(t_{GPU}\) czas treningu dla odpowiednich platform.
 
 \subsubsection{Dynamika procesu uczenia}
 
@@ -2211,7 +2196,7 @@ Przeprowadzone badania eksperymentalne potwierdzają hipotezę o niezmienności 
 
 Jednym z istotnych wyzwań w projektowaniu środowisk treningowych dla algorytmów uczenia przez wzmacnianie jest precyzyjny dobór parametrów opisujących przestrzeń stanów. W ramach projektu \emph{SnakeAI} przeprowadzono serię kontrolowanych eksperymentów mających na celu ocenę wpływu rozdzielczości okna gry na jakość procesu uczenia agenta.
 
-Analiza rezultatów wykazała, że różnica w skuteczności pomiędzy dwiema testowanymi konfiguracjami była stosunkowo niewielka. Model trenujący się w środowisku o rozdzielczości $320\times240$ pikseli osiągnął średni wynik na poziomie $11{,}79$ punktu, natomiast zwiększenie rozdzielczości do $640\times480$ pikseli przełożyło się na wzrost tej wartości do $18{,}74$ punktu. Pomimo niemal dwukrotnego powiększenia okna gry poprawa o około $60\%$ nie okazała się proporcjonalna do wzrostu rozdzielczości, co sugeruje rosnące koszty obliczeniowe przy stosunkowo niewielkich korzyściach w postaci wyższych wyników.
+Analiza rezultatów wykazała, że różnica w skuteczności pomiędzy dwiema testowanymi konfiguracjami była stosunkowo niewielka. Model trenujący się w środowisku o rozdzielczości $320\times240$ pikseli (rysunek \ref{fig:wyniki_treningu_320}) osiągnął średni wynik na poziomie $11{,}79$ punktu, natomiast zwiększenie rozdzielczości do $640\times480$ pikseli (rysunek \ref{fig:wyniki_treningu_640}) przełożyło się na wzrost tej wartości do $18{,}74$ punktu. Pomimo niemal dwukrotnego powiększenia okna gry poprawa o około $60\%$ nie okazała się proporcjonalna do wzrostu rozdzielczości, co sugeruje rosnące koszty obliczeniowe przy stosunkowo niewielkich korzyściach w postaci wyższych wyników.
 
 Wyniki te wskazują, że dalsze zwiększanie rozdzielczości środowiska może wiązać się z coraz mniejszym zwrotem z inwestycji obliczeniowej, co stanowi istotny wniosek przy optymalizacji zasobów w przedsięwzięciach wykorzystujących uczenie przez wzmocnienie.
 
@@ -2224,37 +2209,17 @@ Wszystkie wyniki: [20, 9, 15, 9, 14, 7, 14, 12, 5, 10] \\
 Wszystkie wyniki: [26, 23, 18, 20, 30, 23, 15, 21, 20, 25]\\
 Średni wynik po 10 grach: 22.10 \\ 
 
-Jednakże, w przypadku rozdzielczości 640x480 na przestrzeni mniejszej ilości próbek, agent osiągnął znacznie lepsze wyniki w testach, co sugeruje, że większa rozdzielczość może przyczynić się do lepszego zrozumienia otoczenia przez agenta, jednak dalsze próby zwiększania rozdzielczości wymagałyby o wiele lepszego sprzętu i ogromnego pokładu czasowego. Reasumując, rozdzielczość 320x240 jest wystarczająca do nauki agenta w grze Snake, a dalsze zwiększanie rozdzielczości może nie przynieść proporcjonalnych korzyści w wydajności.
+Jednakże, w przypadku rozdzielczości 640x480 na przestrzeni mniejszej ilości próbek (po wytrenowaniu modelu), agent osiągnął znacznie lepsze wyniki w testach, co sugeruje, że większa rozdzielczość może przyczynić się do lepszego zrozumienia otoczenia przez agenta, jednak dalsze próby zwiększania rozdzielczości wymagałyby o wiele lepszego sprzętu i ogromnego pokładu czasowego. Reasumując, rozdzielczość 320x240 jest wystarczająca do nauki agenta w grze Snake, a dalsze zwiększanie rozdzielczości może nie przynieść proporcjonalnych korzyści w wydajności.
 
-
-\subsubsection{Porównanie wyników obu modeli po 10 grach testowych}
-
-\paragraph{320×240}  
-Wyniki indywidualne w 10 grach:  
-\[
-[20,\;9,\;15,\;9,\;14,\;7,\;14,\;12,\;5,\;10]
-\]
-Średni wynik w serii to \(11{,}50\).
-
-\paragraph{640×480}  
-Wyniki indywidualne w 10 grach:  
-\[
-[26,\;23,\;18,\;20,\;30,\;23,\;15,\;21,\;20,\;25]
-\]
-Średni wynik w serii to \(22{,}10\). \\
-
-Chociaż agent osiągnął wyższe wyniki przy rozdzielczości 640×480, większa liczba pikseli nie przekłada się na lepsze działanie samego agenta, ponieważ w naszym podejściu sieć MLP otrzymuje wyłącznie wektor 11 binarnych cech stanu, a nie surowy obraz. Dalsze zwiększanie rozdzielczości jedynie podnosiłoby wymagania sprzętowe i czas symulacji, nie wpływając znacznie na proces uczenia. W związku z tym rozdzielczość 320×240 jest wystarczająca do efektywnej nauki agenta w grze Snake, a jej dalsze podwyższanie może nie przynieść proporcjonalnych korzyści.  
-
-
-
+\clearpage
 \subsection{Wpływ współczynnika uczenia na wyniki agenta}
 \label{sec:experiments:learning_rate}
 
-Aby zbadać wpływ wartości współczynnika uczenia (\emph{learning rate}) na jakość polityki agenta, przeprowadziliśmy serię eksperymentów dla trzech wartości parametru: 
+Aby zbadać wpływ wartości współczynnika uczenia (\emph{learning rate}) na jakość polityki agenta, przeprowadzono serię eksperymentów dla trzech wartości parametru: 
 \[
 \alpha \in \{0.0003,\,0.003,\,0.03\}.
 \]
-Dla każdej wartości \textbf{lr} trenowaliśmy agenta przez 300 epizodów w identycznych warunkach i mierzyliśmy trzy statystyki końcowe:
+Dla każdej wartości \textbf{lr} trenowano agenta przez 300 epizodów w identycznych warunkach i mierzono trzy statystyki końcowe:
 \begin{itemize}
   \item maksymalny wynik z całego treningu,
   \item średni wynik z wszystkich epizodów,
@@ -2281,7 +2246,7 @@ Dodatkowo na Rysunku~\ref{fig:lr_curve} przedstawiono krzywe zmiany średniej ru
 \begin{figure}[H]
   \centering
   \includegraphics[width=0.8\linewidth]{porównanie_lr.png}
-  \caption{Średnia ruchoma wyników (okno 10 epizodów) agenta dla trzech wartości współczynnika uczenia.}
+  \caption{Średnia ruchoma wyników agenta dla trzech wartości współczynnika uczenia.}
   \label{fig:lr_curve}
 \end{figure}
 
@@ -2293,7 +2258,7 @@ Analiza przebiegów na Rys.~\ref{fig:lr_curve} pokazuje:
 \end{itemize}
 
 \subsubsection{Wnioski z eksperymentu}
-Dobór współczynnika uczenia jest kluczowy dla DQN. Zbyt wysoka wartość powoduje niestabilne aktualizacje i słabszą konwergencję, zaś zbyt niska spowalnia uczenie. W naszych eksperymentach optymalnym kompromisem okazało się \(\alpha=3\times10^{-4}\), co potwierdziło zarówno analiza statystyk końcowych (Rys.~\ref{fig:lr_bar}), jak i dynamika uczenia (Rys.~\ref{fig:lr_curve}).
+Dobór współczynnika uczenia jest kluczowy dla DQN. Zbyt wysoka wartość powoduje niestabilne aktualizacje i słabszą konwergencję, zaś zbyt niska spowalnia uczenie. W naszych eksperymentach optymalnym kompromisem okazało się \(\alpha=0.0003\), co potwierdziło zarówno analiza statystyk końcowych (Rys.~\ref{fig:lr_bar}), jak i dynamika uczenia (Rys.~\ref{fig:lr_curve}).
 \clearpage
 
 
@@ -2355,7 +2320,7 @@ Na Rysunku~\ref{fig:reward_mean} pokazano średnie wyniki z pełnego przebiegu:
   \item Najniższą średnią (11.35) odnotował \texttt{survival\_focus}.
 \end{itemize}
 
-\begin{figure}[h!] 
+\begin{figure}[H] 
   \centering
   \includegraphics[width=0.85\linewidth]{końcowe_średnie.png}
   \caption{Średnie wyniki z ostatnich 100 epizodów dla różnych schematów nagród.}

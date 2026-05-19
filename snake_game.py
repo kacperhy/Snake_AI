@@ -241,7 +241,7 @@ class SnakeGame:
 
 
 class UproszczonySnake:
-    """Uproszczona wersja gry Snake bez interfejsu graficznego, zoptymalizowana pod kątem szybkości."""
+    """Uproszczona wersja gry Snake bez interfejsu graficznego."""
     def __init__(self, szerokość=SZEROKOŚĆ_OKNA, wysokość=WYSOKOŚĆ_OKNA, rozmiar_bloku=ROZMIAR_BLOKU):
         # Inicjalizacja parametrów gry bez interfejsu graficznego
         self.szerokość =   szerokość

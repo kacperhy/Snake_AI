@@ -315,7 +315,7 @@ class DQNAgent:
         except Exception as e:
             print(f"Wystąpił błąd podczas wczytywania modelu: {e}")
             return False
-    def continue_training(self, train_function, game_params, n_episodes=100, save_interval=10, 
+    def continue_training(self, train_function, game_params, liczba_epizodów=100, interwał_zapisu=10,
                       force_device=None, update_learning_params=False, **train_kwargs):
         """
         Kontynuuje trening istniejącego modelu z możliwością zmiany urządzenia obliczeniowego.
@@ -389,13 +389,13 @@ class DQNAgent:
     
         print(f"Kontynuuję trening na urządzeniu: {self.device}")
         print(f"Gamma: {self.gamma}, Epsilon: {self.epsilon}, partia size: {self.rozmiar_partii}")
-        print(f"Trening przez {n_episodes} epizodów...")
+        print(f"Trening przez {liczba_epizodów} epizodów...")
     
         # Uruchom funkcję trenującą
         try:
-            scores, eps_history = train_function(self, game_params, 
-                                                n_episodes=n_episodes, 
-                                                save_interval=save_interval, 
+            scores, eps_history = train_function(self, game_params,
+                                                liczba_epizodów=liczba_epizodów,
+                                                interwał_zapisu=interwał_zapisu,
                                                 **train_kwargs)
         
             print(f"Kontynuacja treningu zakończona. Model zapisany.")

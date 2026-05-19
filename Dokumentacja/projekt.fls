@@ -206,11 +206,6 @@ INPUT C:\Users\Kacper\AppData\Local\Programs\MiKTeX\fonts\enc\dvips\lm\lm-mathit
 INPUT C:\Users\Kacper\AppData\Local\Programs\MiKTeX\fonts\enc\dvips\lm\lm-rm.enc
 INPUT C:\Users\Kacper\AppData\Local\Programs\MiKTeX\fonts\enc\dvips\lm\lm-mathsy.enc
 INPUT C:\Users\Kacper\AppData\Local\Programs\MiKTeX\fonts\enc\dvips\lm\lm-mathex.enc
-INPUT C:\Users\Kacper\AppData\Local\Programs\MiKTeX\tex\latex\lm\ts1lmr.fd
-INPUT C:\Users\Kacper\AppData\Local\Programs\MiKTeX\tex\latex\lm\ts1lmr.fd
-INPUT C:\Users\Kacper\AppData\Local\Programs\MiKTeX\tex\latex\lm\ts1lmr.fd
-INPUT C:\Users\Kacper\AppData\Local\Programs\MiKTeX\fonts\tfm\public\lm\ts1-lmr12.tfm
-INPUT C:\Users\Kacper\AppData\Local\Programs\MiKTeX\fonts\enc\dvips\lm\lm-ts1.enc
 INPUT C:\Users\Kacper\AppData\Local\Programs\MiKTeX\fonts\tfm\public\lm\ec-lmr8.tfm
 INPUT C:\Users\Kacper\AppData\Local\Programs\MiKTeX\fonts\tfm\public\lm\ec-lmr6.tfm
 INPUT .\LeakyRelu.png
@@ -220,6 +215,10 @@ INPUT .\LeakyRelu.png
 INPUT .\LeakyRelu.png
 INPUT .\LeakyRelu.png
 INPUT .\LeakyRelu.png
+INPUT C:\Users\Kacper\AppData\Local\Programs\MiKTeX\tex\latex\lm\ts1lmr.fd
+INPUT C:\Users\Kacper\AppData\Local\Programs\MiKTeX\tex\latex\lm\ts1lmr.fd
+INPUT C:\Users\Kacper\AppData\Local\Programs\MiKTeX\tex\latex\lm\ts1lmr.fd
+INPUT C:\Users\Kacper\AppData\Local\Programs\MiKTeX\fonts\tfm\public\lm\ts1-lmr12.tfm
 INPUT C:\Users\Kacper\AppData\Local\Programs\MiKTeX\fonts\tfm\public\lm\ec-lmr10.tfm
 INPUT C:\Users\Kacper\AppData\Local\Programs\MiKTeX\fonts\tfm\public\lm\rm-lmr10.tfm
 INPUT C:\Users\Kacper\AppData\Local\Programs\MiKTeX\fonts\tfm\public\lm\rm-lmr7.tfm
@@ -240,6 +239,8 @@ INPUT C:\Users\Kacper\AppData\Local\Programs\MiKTeX\fonts\tfm\public\amsfonts\sy
 INPUT C:\Users\Kacper\AppData\Local\Programs\MiKTeX\fonts\tfm\public\amsfonts\symbols\msbm7.tfm
 INPUT C:\Users\Kacper\AppData\Local\Programs\MiKTeX\fonts\tfm\public\amsfonts\symbols\msbm5.tfm
 INPUT C:\Users\Kacper\AppData\Local\Programs\MiKTeX\fonts\tfm\public\lm\ec-lmr7.tfm
+INPUT C:\Users\Kacper\AppData\Local\Programs\MiKTeX\fonts\enc\dvips\lm\lm-ts1.enc
+INPUT C:\Users\Kacper\AppData\Local\Programs\MiKTeX\fonts\tfm\public\lm\ec-lmbx10.tfm
 INPUT C:\Users\Kacper\AppData\Local\Programs\MiKTeX\tex\latex\lm\t1lmtt.fd
 INPUT C:\Users\Kacper\AppData\Local\Programs\MiKTeX\tex\latex\lm\t1lmtt.fd
 INPUT C:\Users\Kacper\AppData\Local\Programs\MiKTeX\tex\latex\lm\t1lmtt.fd
@@ -289,7 +290,6 @@ INPUT .\rozdzialka640.png
 INPUT .\rozdzialka640.png
 INPUT .\rozdzialka640.png
 INPUT .\rozdzialka640.png
-INPUT C:\Users\Kacper\AppData\Local\Programs\MiKTeX\fonts\tfm\public\lm\ts1-lmbx12.tfm
 INPUT .\lr_wyniki_słupkowy.png
 INPUT .\lr_wyniki_słupkowy.png
 INPUT .\lr_wyniki_słupkowy.png
@@ -335,6 +335,8 @@ INPUT .\końcowe_średnie.png
 INPUT projekt.aux
 INPUT C:\Users\Kacper\AppData\Local\Programs\MiKTeX\fonts\type1\public\lm\lmbsy10.pfb
 INPUT C:\Users\Kacper\AppData\Local\Programs\MiKTeX\fonts\type1\public\lm\lmbsy10.pfb
+INPUT C:\Users\Kacper\AppData\Local\Programs\MiKTeX\fonts\type1\public\lm\lmbx10.pfb
+INPUT C:\Users\Kacper\AppData\Local\Programs\MiKTeX\fonts\type1\public\lm\lmbx10.pfb
 INPUT C:\Users\Kacper\AppData\Local\Programs\MiKTeX\fonts\type1\public\lm\lmbx12.pfb
 INPUT C:\Users\Kacper\AppData\Local\Programs\MiKTeX\fonts\type1\public\lm\lmbx12.pfb
 INPUT C:\Users\Kacper\AppData\Local\Programs\MiKTeX\fonts\type1\public\lm\lmbx8.pfb
