@@ -10,6 +10,7 @@ from snake_game import UproszczonySnake
 from config import UŻYJ_GPU
 import pygame
 from agent import DQNAgent
+from model import QNetwork
       
 
 def uruchom_epizod(agent, parametry_gry, maks_kroków=10000):
@@ -48,6 +49,47 @@ def uruchom_epizod(agent, parametry_gry, maks_kroków=10000):
         liczba_kroków += 1
     
     return doświadczenia, łączna_nagroda, wynik
+
+
+def uruchom_epizod_mp(args):
+    """
+    Wersja uruchom_epizod dla multiprocessingu – przyjmuje serializowane wagi
+    zamiast żywego agenta, bo obiekty CUDA nie są picklowalne.
+
+    Args:
+        args (tuple): (weights, epsilon, rozmiar_stanu, rozmiar_akcji,
+                       rozmiar_ukryty, parametry_gry, maks_kroków)
+
+    Returns:
+        tuple: Para (doświadczenia, wynik)
+    """
+    import random
+    weights, epsilon, rozmiar_stanu, rozmiar_akcji, rozmiar_ukryty, parametry_gry, maks_kroków = args
+
+    model = QNetwork(rozmiar_stanu, rozmiar_ukryty, rozmiar_akcji)
+    model.load_state_dict(weights)
+    model.eval()
+
+    game = UproszczonySnake(**parametry_gry)
+    stan = game.reset()
+    done = False
+    doswiadczenia = []
+    kroki = 0
+
+    while not done and kroki < maks_kroków:
+        if random.random() <= epsilon:
+            akcja = random.randrange(rozmiar_akcji)
+        else:
+            with torch.no_grad():
+                t = torch.tensor(np.array(stan), dtype=torch.float32).unsqueeze(0)
+                akcja = torch.argmax(model(t)).item()
+
+        nast_stan, nagroda, done, wynik = game.krok(akcja)
+        doswiadczenia.append((stan, akcja, nagroda, nast_stan, done))
+        stan = nast_stan
+        kroki += 1
+
+    return doswiadczenia, wynik
 
 
 def trenuj_hybrydowo(agent, parametry_gry, liczba_epizodów=1000, aktualizacja_docelowa=10, interwał_zapisu=100, liczba_równoległych=4):

@@ -151,6 +151,7 @@ class DQNAgent:
     def aktualizuj_model_docelowy(self):
         """Aktualizacja wag modelu docelowego."""
         self.model_docelowy.load_state_dict(self.model.state_dict())
+        self.model_docelowy.eval()  # sieć docelowa nigdy nie jest trenowana
     
     def zapamiętaj(self, state, action, reward, next_state, done):
         """Zapisuje doświadczenie w buforze pamięci."""
