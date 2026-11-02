@@ -1,7 +1,6 @@
 """
-GUI Tkinter dla Snake AI – architektura modularna.
-Każdy algorytm to osobna zakładka (DQN, A*, ...).
-Uruchom: python gui_tk.py
+GUI dla Snake AI.
+Każdy algorytm to osobna zakładka (DQN, A*, może coś w przyszłości).
 """
 
 import tkinter as tk
@@ -68,7 +67,7 @@ C = {
 
 class GameCanvas(tk.Frame):
     """Rysuje stan gry Snake na tk.Canvas przy użyciu prostokątów.
-    Rozmiar siatki jest dynamiczny – wywołaj set_grid() przed startem gry.
+    Rozmiar siatki jest dynamiczny.
     """
 
     def __init__(self, parent, **kw):
@@ -317,7 +316,7 @@ class DQNPanel(tk.Frame):
 
     EP_OPTS    = [50, 100, 200, 500, 1000, 5000, 10000, 25000, 50000, 100000]
     PAR_OPTS   = [1, 2, 4, 8, 16, 32]
-    DELAY_OPTS = [0, 10, 25, 50, 100, 200]   # ms opóźnienia między krokami CPU
+    DELAY_OPTS = [1, 10, 25, 50, 100, 200]   # ms opóźnienia między krokami CPU
     GRID_OPTS  = [6, 8, 10, 12, 16, 20]       # komórek na bok (kwadratowa siatka)
 
     def __init__(self, parent, app, **kw):
@@ -348,7 +347,7 @@ class DQNPanel(tk.Frame):
 
         self._stepper(cfg, 'Epizody:',          self._ep_var,
                       self._ep_minus,    self._ep_plus,    row=0)
-        self._stepper(cfg, 'Równoległe gry:',   self._par_var,
+        self._stepper(cfg, 'ilość gier przed uczeniem:',   self._par_var,
                       self._par_minus,   self._par_plus,   row=1)
         self._stepper(cfg, 'Opóźnienie (CPU):', self._delay_var,
                       self._delay_minus, self._delay_plus, row=2)
