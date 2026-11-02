@@ -78,18 +78,32 @@ class GameCanvas(tk.Frame):
             highlightthickness=1,
             highlightbackground=C['border'],
         )
-        self.canvas.pack(padx=2, pady=2)
+        self.canvas.pack(padx=2, pady=2, fill='both', expand=True)
         self._grid_n     = 8           # komórek na bok
         self._game_block = ROZMIAR_BLOKU   # px/komórkę w logice gry (zawsze 40)
+        self._cw, self._ch = CW, CH    # aktualny rozmiar canvasu (zmienia się z oknem)
+        self._last_gs, self._last_tick = None, 0
         self._recalc()
         self._draw_grid()
+        self.canvas.bind('<Configure>', self._on_resize)
+
+    def _on_resize(self, e):
+        """Okno zmieniło rozmiar – przeskaluj planszę i narysuj ją od nowa."""
+        if (e.width, e.height) == (self._cw, self._ch):
+            return
+        self._cw, self._ch = e.width, e.height
+        self._recalc()
+        self.canvas.delete('all')
+        self._draw_grid()
+        if self._last_gs is not None:
+            self.update_state(self._last_gs, self._last_tick)
 
     def _recalc(self):
         """Przelicza rozmiar bloku wyświetlania i offset centrowania."""
-        self._disp_block = CH // self._grid_n
+        self._disp_block = max(4, min(self._cw, self._ch) // self._grid_n)
         area = self._disp_block * self._grid_n
-        self._ox = (CW - area) // 2
-        self._oy = (CH - area) // 2
+        self._ox = (self._cw - area) // 2
+        self._oy = (self._ch - area) // 2
 
     def set_grid(self, grid_n: int):
         """Zmienia rozmiar siatki i przerysowuje siatkę tła."""
@@ -117,6 +131,7 @@ class GameCanvas(tk.Frame):
         px/py to współrzędne pikselowe z UproszczonySnake (wielokrotności _game_block).
         """
         self.canvas.delete('dyn')
+        self._last_gs, self._last_tick = gs, tick
         if gs is None:
             return
 
@@ -146,7 +161,9 @@ class GameCanvas(tk.Frame):
             self.canvas.create_rectangle(x1 + pad, y1 + pad,
                                          x2 - pad, y2 - pad,
                                          fill=inn, outline='', tags='dyn')
+
         self._draw_face(gs['snake'], ox, oy, db, gb, tick)
+
         # Jedzenie z pulsowaniem (po wygranej plansza jest pełna – brak jedzenia)
         if not gs.get('won'):
             fx, fy = gs['food'][0] // gb, gs['food'][1] // gb
@@ -164,31 +181,6 @@ class GameCanvas(tk.Frame):
         if overlay:
             self._draw_overlay(overlay)
 
-    def _draw_overlay(self, lines: list):
-        """Półprzezroczysty pas z tekstem; pierwsza linia duża."""
-        h = 40 + 28 * len(lines)
-        y0 = CH // 2 - h // 2
-        self.canvas.create_rectangle(0, y0, CW, y0 + h, fill='#000000',
-                                     stipple='gray50', outline='', tags='dyn')
-        cy = y0 + 34
-        for i, line in enumerate(lines):
-            font = ('Segoe UI', 28, 'bold') if i == 0 else ('Segoe UI', 12)
-            self.canvas.create_text(CW // 2, cy, text=line, fill='#ffffff',
-                                    font=font, tags='dyn')
-            cy += 40 if i == 0 else 26
-
-    def show_message(self, lines: list, color: str = C['text3']):
-        self.canvas.delete('dyn')
-        cy = CH // 2 - len(lines) * 15
-        for line in lines:
-            col  = color if line else C['text3']
-            size = 13 if line else 8
-            self.canvas.create_text(
-                CW // 2, cy, text=line,
-                fill=col, font=('Segoe UI', size), tags='dyn',
-            )
-            cy += 28
-            
     def _draw_face(self, snake, ox, oy, db, gb, tick):
         """Oczy i język na głowie, obrócone w stronę ruchu."""
         hx, hy = snake[0][0] // gb, snake[0][1] // gb
@@ -220,6 +212,32 @@ class GameCanvas(tk.Frame):
                                     tx + dx * db * 0.25, ty + dy * db * 0.25,
                                     fill='#ff3355',
                                     width=max(2, int(db * 0.06)), tags='dyn')
+
+    def _draw_overlay(self, lines: list):
+        """Półprzezroczysty pas z tekstem; pierwsza linia duża."""
+        h = 40 + 28 * len(lines)
+        y0 = self._ch // 2 - h // 2
+        self.canvas.create_rectangle(0, y0, self._cw, y0 + h, fill='#000000',
+                                     stipple='gray50', outline='', tags='dyn')
+        cy = y0 + 34
+        for i, line in enumerate(lines):
+            font = ('Segoe UI', 28, 'bold') if i == 0 else ('Segoe UI', 12)
+            self.canvas.create_text(self._cw // 2, cy, text=line, fill='#ffffff',
+                                    font=font, tags='dyn')
+            cy += 40 if i == 0 else 26
+
+    def show_message(self, lines: list, color: str = C['text3']):
+        self.canvas.delete('dyn')
+        cy = self._ch // 2 - len(lines) * 15
+        for line in lines:
+            col  = color if line else C['text3']
+            size = 13 if line else 8
+            self.canvas.create_text(
+                self._cw // 2, cy, text=line,
+                fill=col, font=('Segoe UI', size), tags='dyn',
+            )
+            cy += 28
+
 
 # ══════════════════════════════════════════════════════════════════════
 # StatsGraph – wykres live na tk.Canvas
@@ -554,11 +572,13 @@ class DQNPanel(tk.Frame):
         self.grid_i = max(0, self.grid_i - 1)
         n = self.GRID_OPTS[self.grid_i]
         self._grid_var.set(f'{n}×{n}')
+        self.app.podgląd_siatki(n)
 
     def _grid_plus(self):
         self.grid_i = min(len(self.GRID_OPTS) - 1, self.grid_i + 1)
         n = self.GRID_OPTS[self.grid_i]
         self._grid_var.set(f'{n}×{n}')
+        self.app.podgląd_siatki(n)
 
     # ── API dla App ──────────────────────────────────────────────────
 
@@ -608,7 +628,46 @@ class DQNPanel(tk.Frame):
 # AStarPanel – sterowanie i statystyki algorytmu A*
 # ══════════════════════════════════════════════════════════════════════
 
-class AStarPanel(tk.Frame):
+class SiatkaMixin:
+    """Wybór rozmiaru siatki dla paneli A* i Gracz (każdy ma własny).
+
+    Wszystkie opcje są parzyste – A* potrzebuje cyklu Hamiltona,
+    a ten na kwadratowej siatce n×n istnieje tylko dla parzystego n.
+    """
+    GRID_OPTS = [6, 8, 10, 12, 16, 20]
+
+    def _zbuduj_siatkę(self, cfg, row: int):
+        self.grid_i = 1   # domyślnie 8×8
+        n = self.GRID_OPTS[self.grid_i]
+        self._grid_var = tk.StringVar(value=f'{n}×{n}')
+        tk.Label(cfg, text='Siatka:', bg=C['panel'], fg=C['text2'],
+                 font=('Segoe UI', 9)).grid(row=row, column=0, sticky='w',
+                                             padx=(4, 8), pady=3)
+        tk.Button(cfg, text='−', command=lambda: self._zmień_siatkę(-1),
+                  bg=C['btn'], fg=C['text'], relief='flat',
+                  font=('Segoe UI', 10, 'bold'), width=2, takefocus=0,
+                  cursor='hand2').grid(row=row, column=1, padx=(0, 2))
+        tk.Label(cfg, textvariable=self._grid_var,
+                 bg=C['panel2'], fg=C['accent'],
+                 font=('Segoe UI', 10, 'bold'), width=6,
+                 anchor='center').grid(row=row, column=2, padx=2)
+        tk.Button(cfg, text='+', command=lambda: self._zmień_siatkę(+1),
+                  bg=C['btn'], fg=C['text'], relief='flat',
+                  font=('Segoe UI', 10, 'bold'), width=2, takefocus=0,
+                  cursor='hand2').grid(row=row, column=3, padx=(2, 0))
+
+    def _zmień_siatkę(self, krok: int):
+        self.grid_i = min(max(0, self.grid_i + krok), len(self.GRID_OPTS) - 1)
+        n = self.GRID_OPTS[self.grid_i]
+        self._grid_var.set(f'{n}×{n}')
+        self.app.podgląd_siatki(n)
+
+    @property
+    def grid_size(self) -> int:
+        return self.GRID_OPTS[self.grid_i]
+
+
+class AStarPanel(SiatkaMixin, tk.Frame):
     DELAY_OPTS = [0, 10, 25, 50, 100, 200, 500]  # ms między krokami
 
     def __init__(self, parent, app, **kw):
@@ -644,10 +703,7 @@ class AStarPanel(tk.Frame):
                   bg=C['btn'], fg=C['text'], relief='flat',
                   font=('Segoe UI', 10, 'bold'), width=2,
                   cursor='hand2').grid(row=0, column=3, padx=(2, 0))
-        tk.Label(cfg, text='Siatka – ustawiana w zakładce DQN',
-                 bg=C['panel'], fg=C['text3'],
-                 font=('Segoe UI', 8)).grid(row=1, column=0, columnspan=5,
-                                             sticky='w', padx=4, pady=(0, 4))
+        self._zbuduj_siatkę(cfg, row=1)
 
         # Statystyki
         sts = tk.LabelFrame(self, text=' Statystyki ',
@@ -733,7 +789,7 @@ class AStarPanel(tk.Frame):
 # PlayerPanel – samodzielna gra z klawiatury
 # ══════════════════════════════════════════════════════════════════════
 
-class PlayerPanel(tk.Frame):
+class PlayerPanel(SiatkaMixin, tk.Frame):
     """Panel zakładki Gracz: szybkość, sterowanie, statystyki, przyciski."""
 
     SPEED_OPTS = [200, 150, 120, 100, 80, 60]   # ms na jeden krok węża
@@ -770,10 +826,7 @@ class PlayerPanel(tk.Frame):
                   bg=C['btn'], fg=C['text'], relief='flat',
                   font=('Segoe UI', 10, 'bold'), width=2,
                   cursor='hand2').grid(row=0, column=3, padx=(2, 0))
-        tk.Label(cfg, text='Siatka – ustawiana w zakładce DQN',
-                 bg=C['panel'], fg=C['text3'],
-                 font=('Segoe UI', 8)).grid(row=1, column=0, columnspan=5,
-                                             sticky='w', padx=4, pady=(0, 4))
+        self._zbuduj_siatkę(cfg, row=1)
 
         # Sterowanie
         ctl = tk.LabelFrame(self, text=' Sterowanie ',
@@ -893,6 +946,7 @@ class App(tk.Tk):
         self._pl_sesja:    int              = 0   # chroni przed podwójną pętlą gracza
 
         self._build_ui()
+        self._dopasuj_do_ekranu()
         self._poll()
 
     # ── Layout ───────────────────────────────────────────────────────
@@ -926,25 +980,28 @@ class App(tk.Tk):
         main = tk.Frame(self, bg=C['bg'])
         main.pack(fill='both', expand=True, side='top')
 
-        # lewy panel: canvas gry + lista modeli
-        left = tk.Frame(main, bg=C['panel'], width=CW + 8)
-        left.pack(side='left', fill='y')
-        left.pack_propagate(False)
-
-        self.game_canvas = GameCanvas(left)
-        self.game_canvas.pack(fill='x')
-
-        tk.Frame(left, bg=C['border'], height=1).pack(fill='x')
-
-        self.model_list = ModelList(left, on_select=self._on_model_sel)
-        self.model_list.pack(fill='both', expand=True)
+        # prawy panel: notebook algorytmów (stała szerokość)
+        right = tk.Frame(main, bg=C['panel'], width=420)
+        right.pack(side='right', fill='y')
+        right.pack_propagate(False)
 
         # separator pionowy
-        tk.Frame(main, bg=C['border'], width=1).pack(side='left', fill='y')
+        tk.Frame(main, bg=C['border'], width=1).pack(side='right', fill='y')
 
-        # prawy panel: notebook algorytmów
-        right = tk.Frame(main, bg=C['panel'])
-        right.pack(side='left', fill='both', expand=True)
+        # lewy panel: canvas gry (rośnie z oknem) + lista modeli na dole
+        left = tk.Frame(main, bg=C['panel'])
+        left.pack(side='left', fill='both', expand=True)
+
+        self.model_list = ModelList(left, on_select=self._on_model_sel)
+        self.model_list.lb.config(height=6)
+        self.model_list.pack(side='bottom', fill='x')
+
+        self._model_sep = tk.Frame(left, bg=C['border'], height=1)
+        self._model_sep.pack(side='bottom', fill='x')
+        self._lista_widoczna = True
+
+        self.game_canvas = GameCanvas(left)
+        self.game_canvas.pack(fill='both', expand=True)
 
         style = ttk.Style()
         style.theme_use('clam')
@@ -981,7 +1038,9 @@ class App(tk.Tk):
 
         # Wyjście z zakładki Gracz kończy grę – inaczej przyciski DQN/A*
         # zostają wyszarzone, bo tryb gracza wciąż jest aktywny.
-        self.nb, self._player_tab = nb, player_f
+        self.nb = nb
+        self._zakładki = {str(dqn_f): 'dqn', str(astar_f): 'astar',
+                          str(player_f): 'player'}
         nb.bind('<<NotebookTabChanged>>', self._on_tab_changed)
 
     # ── Pętla pollingu ─────────────────────────────────────
@@ -1060,10 +1119,51 @@ class App(tk.Tk):
         if not v:
             self.game_canvas.update_state(None)
 
+    def _dopasuj_do_ekranu(self):
+        """Otwiera okno zmaksymalizowane (z paskiem zadań, nie pełny ekran)."""
+        try:
+            self.state('zoomed')                     # Windows / macOS
+        except tk.TclError:
+            try:
+                self.attributes('-zoomed', True)     # Linux
+            except tk.TclError:
+                self.geometry(f'{self.winfo_screenwidth()}x'
+                              f'{self.winfo_screenheight()}+0+0')
+
     def _on_tab_changed(self, _event=None):
-        if (self._active and self._active_mode == 'player'
-                and self.nb.select() != str(self._player_tab)):
+        if not hasattr(self, 'game_canvas'):
+            return                          # zdarzenie przy budowie okna
+        zakładka = self._zakładki.get(self.nb.select(), 'dqn')
+
+        # Wyjście z zakładki Gracz kończy grę – inaczej przyciski DQN/A*
+        # zostają wyszarzone, bo tryb gracza wciąż jest aktywny.
+        if self._active and self._active_mode == 'player' and zakładka != 'player':
             self.stop()
+
+        # Lista modeli ma sens tylko w DQN – gdzie indziej plansza dostaje miejsce
+        self._pokaż_listę_modeli(zakładka == 'dqn')
+
+        # Podgląd siatki wybranej w tej zakładce
+        panel = {'dqn': self.dqn, 'astar': self.astar_panel,
+                 'player': self.player_panel}[zakładka]
+        self.podgląd_siatki(panel.grid_size)
+
+    def _pokaż_listę_modeli(self, widoczna: bool):
+        if widoczna == self._lista_widoczna:
+            return
+        if widoczna:
+            # 'before' przywraca pierwotną kolejność: lista na dole, nad nią kreska
+            self.model_list.pack(side='bottom', fill='x', before=self.game_canvas)
+            self._model_sep.pack(side='bottom', fill='x', before=self.game_canvas)
+        else:
+            self.model_list.pack_forget()
+            self._model_sep.pack_forget()
+        self._lista_widoczna = widoczna
+
+    def podgląd_siatki(self, n: int):
+        """Pokazuje pustą siatkę n×n – tylko gdy nic nie działa."""
+        if not self._active:
+            self.game_canvas.set_grid(n)
 
     def _selected(self):
         return self._sel_model or self.model_list.selected()
@@ -1311,7 +1411,7 @@ class App(tk.Tk):
         self._set_active(True)
         self.astar_panel.set_status('A* działa…', C['accent'])
 
-        grid_n = self.dqn.grid_size
+        grid_n = self.astar_panel.grid_size
         self._log(f'A* | siatka {grid_n}×{grid_n}')
         self.game_canvas.set_grid(grid_n)
         self._game_params = dict(szerokość=grid_n * ROZMIAR_BLOKU,
@@ -1382,7 +1482,7 @@ class App(tk.Tk):
         self._set_active(True)
         self.player_panel.set_status('Gra trwa', C['accent'])
 
-        grid_n = self.dqn.grid_size
+        grid_n = self.player_panel.grid_size
         self._log(f'Gracz | siatka {grid_n}×{grid_n}')
         self.game_canvas.set_grid(grid_n)
         self._pl_game = UproszczonySnake(grid_n * ROZMIAR_BLOKU,
