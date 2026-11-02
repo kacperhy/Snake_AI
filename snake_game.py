@@ -31,8 +31,9 @@ class SnakeGame:
     def __init__(self, szerokość=SZEROKOŚĆ_OKNA, wysokość=WYSOKOŚĆ_OKNA, rozmiar_bloku=ROZMIAR_BLOKU):
         # Inicjalizacja parametrów gry
         self.szerokość = szerokość
-        self.wysokość =    wysokość
+        self.wysokość = wysokość
         self.rozmiar_bloku = rozmiar_bloku
+        self.liczba_pól = (szerokość // rozmiar_bloku) * (wysokość // rozmiar_bloku)
         self.display = pygame.display.set_mode((szerokość, wysokość))
         pygame.display.set_caption('Snake AI - PyTorch')
         self.zegar = pygame.time.Clock()
@@ -54,6 +55,7 @@ class SnakeGame:
         ]
         
         self.wynik = 0
+        self.wygrana = False
         self.jedzenie = None
         self._umieść_jedzenie()
         self.iteracja_klatki = 0
@@ -181,30 +183,48 @@ class SnakeGame:
         self.głowa = [x, y]
         self.snake.insert(0, self.głowa)
         
-        # Sprawdzenie, czy gra się zakończyła
         nagroda = 0
         koniec_gry = False
+        zjada = self.głowa == self.jedzenie
+        
+        # POPRAWKA: ogon odsuwa się w tym samym ruchu, więc usuwamy go PRZED
+        # sprawdzeniem kolizji – wejście na pole ogona jest legalne.
+        ogon = None
+        if not zjada:
+            ogon = self.snake.pop()
         
         # Kolizja lub przekroczenie limitu ruchów bez jedzenia
-        # Bardziej agresywny limit dla długich węży (zmniejsza trenowanie na "chodzeniu w kółko")
         maks_kroków_bez_jedzenia = 100 * len(self.snake)
         if len(self.snake) > 10:
             maks_kroków_bez_jedzenia = 50 * len(self.snake)
             
-        if self._czy_kolizja() or self.kroki_bez_jedzenia > maks_kroków_bez_jedzenia:
+        if self._czy_kolizja():
+            # POPRAWKA: cofamy ruch – wąż zostaje tam, gdzie był tuż przed
+            # uderzeniem (głowa nie wjeżdża w ścianę ani w ciało)
+            self.snake.pop(0)
+            if ogon is not None:
+                self.snake.append(ogon)
+            self.głowa = self.snake[0]
+            return self._pobierz_stan(), -10, True, self.wynik
+
+        if self.kroki_bez_jedzenia > maks_kroków_bez_jedzenia:
             koniec_gry = True
             nagroda = -10
             return self._pobierz_stan(), nagroda, koniec_gry, self.wynik
             
         # Zjedzenie jedzenia
-        if self.głowa == self.jedzenie:
+        if zjada:
             self.wynik += 1
             nagroda = 10
             self.kroki_bez_jedzenia = 0
+            # POPRAWKA: wąż wypełnił planszę – wygrana (bez tego
+            # _umieść_jedzenie() wpadłoby w nieskończoną pętlę)
+            if len(self.snake) == self.liczba_pól:
+                self.wygrana = True
+                self._aktualizuj_ui()
+                return self._pobierz_stan(), nagroda, True, self.wynik
             self._umieść_jedzenie()
         else:
-            self.snake.pop()  # usunięcie ostatniego segmentu węża, jeśli nie zjadł jedzenia
-            
             # Dodatkowe nagrody za zbliżanie się do jedzenia (kształtowanie nagrody)
             poprz_odl_do_jedzenia = abs(self.snake[1][0] - self.jedzenie[0]) + abs(self.snake[1][1] - self.jedzenie[1])
             obecna_odl_do_jedzenia = abs(self.głowa[0] - self.jedzenie[0]) + abs(self.głowa[1] - self.jedzenie[1])
@@ -231,25 +251,27 @@ class SnakeGame:
             pygame.draw.rect(self.display, CIEMNY_ZIELONY, pygame.Rect(pt[0] + 4, pt[1] + 4, self.rozmiar_bloku - 8, self.rozmiar_bloku - 8))
             
         # Rysowanie jedzenia
-        pygame.draw.rect(self.display, CZERWONY, pygame.Rect(self.jedzenie[0], self.jedzenie[1], self.rozmiar_bloku, self.rozmiar_bloku))
+        if not self.wygrana:
+            pygame.draw.rect(self.display, CZERWONY, pygame.Rect(self.jedzenie[0], self.jedzenie[1], self.rozmiar_bloku, self.rozmiar_bloku))
         
         # Wyświetlanie wyniku
         font = pygame.font.SysFont('arial', 25)
-        tekst = font.render(f"Wynik: {self.wynik}", True, BIAŁY)
+        tekst = font.render(f"Wynik: {self.wynik}" + ("  WYGRANA!" if self.wygrana else ""), True, BIAŁY)
         self.display.blit(tekst, [0, 0])
         pygame.display.flip()
 
 
 class UproszczonySnake:
-    """Uproszczona wersja gry Snake bez interfejsu graficznego."""
+    """Uproszczona wersja gry Snake bez interfejsu graficznego, zoptymalizowana pod kątem szybkości."""
     def __init__(self, szerokość=SZEROKOŚĆ_OKNA, wysokość=WYSOKOŚĆ_OKNA, rozmiar_bloku=ROZMIAR_BLOKU):
         # Inicjalizacja parametrów gry bez interfejsu graficznego
-        self.szerokość =   szerokość
+        self.szerokość = szerokość
         self.wysokość = wysokość
         self.rozmiar_bloku = rozmiar_bloku
         # Prekompilacja stałych
         self.max_x = (szerokość // rozmiar_bloku) - 1
         self.max_y = (wysokość // rozmiar_bloku) - 1
+        self.liczba_pól = (self.max_x + 1) * (self.max_y + 1)
         self.reset()
     
     def reset(self):
@@ -268,6 +290,7 @@ class UproszczonySnake:
         ]
         
         self.wynik = 0
+        self.wygrana = False
         self.jedzenie = None
         self._umieść_jedzenie()
         self.iteracja_klatki = 0
@@ -355,7 +378,7 @@ class UproszczonySnake:
         self.iteracja_klatki += 1
         self.kroki_bez_jedzenia += 1
         
-        # Aktualizacja kierunku na podstawie akcji - używamy prekompilowanych stałych
+        # Aktualizacja kierunku na podstawie akcji
         # [prosto, w prawo, w lewo]
         clock_wise = [Kierunek.PRAWO, Kierunek.DÓŁ, Kierunek.LEWO, Kierunek.GÓRA]
         indeks = clock_wise.index(self.Kierunek)
@@ -386,29 +409,45 @@ class UproszczonySnake:
         self.głowa = [x, y]
         self.snake.insert(0, self.głowa.copy())  # Używamy kopii, aby uniknąć referencji
         
-        # Sprawdzenie, czy gra się zakończyła
         nagroda = 0
         koniec_gry = False
+        zjada = self.głowa == self.jedzenie
+        
+        # POPRAWKA: ogon odsuwa się w tym samym ruchu – usuwamy go przed kolizją
+        ogon = None
+        if not zjada:
+            ogon = self.snake.pop()
         
         # Kolizja lub przekroczenie limitu ruchów bez jedzenia
         maks_kroków_bez_jedzenia = 100 * len(self.snake)
         if len(self.snake) > 10:
             maks_kroków_bez_jedzenia = 50 * len(self.snake)
             
-        if self._czy_kolizja() or self.kroki_bez_jedzenia > maks_kroków_bez_jedzenia:
+        if self._czy_kolizja():
+            # POPRAWKA: cofamy ruch – wąż zostaje tam, gdzie był tuż przed
+            # uderzeniem (głowa nie wjeżdża w ścianę ani w ciało)
+            self.snake.pop(0)
+            if ogon is not None:
+                self.snake.append(ogon)
+            self.głowa = self.snake[0]
+            return self._pobierz_stan(), -10, True, self.wynik
+
+        if self.kroki_bez_jedzenia > maks_kroków_bez_jedzenia:
             koniec_gry = True
             nagroda = -10
             return self._pobierz_stan(), nagroda, koniec_gry, self.wynik
             
         # Zjedzenie jedzenia
-        if self.głowa == self.jedzenie:
+        if zjada:
             self.wynik += 1
             nagroda = 10
             self.kroki_bez_jedzenia = 0
+            # POPRAWKA: plansza pełna – wygrana
+            if len(self.snake) == self.liczba_pól:
+                self.wygrana = True
+                return self._pobierz_stan(), nagroda, True, self.wynik
             self._umieść_jedzenie()
         else:
-            self.snake.pop()  # usunięcie ostatniego segmentu węża, jeśli nie zjadł jedzenia
-            
             # Dodatkowe nagrody za zbliżanie się do jedzenia
             poprz_odl_do_jedzenia = abs(self.snake[1][0] - self.jedzenie[0]) + abs(self.snake[1][1] - self.jedzenie[1])
             obecna_odl_do_jedzenia = abs(self.głowa[0] - self.jedzenie[0]) + abs(self.głowa[1] - self.jedzenie[1])

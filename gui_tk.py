@@ -13,7 +13,7 @@ import math
 import numpy as np
 import torch
 
-from snake_game import UproszczonySnake
+from snake_game import UproszczonySnake, Kierunek
 from agent import DQNAgent
 from training import uruchom_epizod
 import config
@@ -146,17 +146,36 @@ class GameCanvas(tk.Frame):
             self.canvas.create_rectangle(x1 + pad, y1 + pad,
                                          x2 - pad, y2 - pad,
                                          fill=inn, outline='', tags='dyn')
+        self._draw_face(gs['snake'], ox, oy, db, gb, tick)
+        # Jedzenie z pulsowaniem (po wygranej plansza jest pełna – brak jedzenia)
+        if not gs.get('won'):
+            fx, fy = gs['food'][0] // gb, gs['food'][1] // gb
+            x1, y1 = ox + fx * db, oy + fy * db
+            pulse  = int(abs(math.sin(tick * 0.1)) * max(1, db // 8))
+            self.canvas.create_rectangle(x1, y1, x1 + db, y1 + db,
+                                         fill=C['food'], outline='', tags='dyn')
+            p2 = max(2, db // 5) + pulse
+            self.canvas.create_rectangle(x1 + p2, y1 + p2,
+                                         x1 + db - p2, y1 + db - p2,
+                                         fill=C['food_i'], outline='', tags='dyn')
 
-        # Jedzenie z pulsowaniem
-        fx, fy = gs['food'][0] // gb, gs['food'][1] // gb
-        x1, y1 = ox + fx * db, oy + fy * db
-        pulse  = int(abs(math.sin(tick * 0.1)) * max(1, db // 8))
-        self.canvas.create_rectangle(x1, y1, x1 + db, y1 + db,
-                                     fill=C['food'], outline='', tags='dyn')
-        p2 = max(2, db // 5) + pulse
-        self.canvas.create_rectangle(x1 + p2, y1 + p2,
-                                     x1 + db - p2, y1 + db - p2,
-                                     fill=C['food_i'], outline='', tags='dyn')
+        # Komunikat na planszy (pauza / koniec gry / wygrana)
+        overlay = gs.get('overlay') or (['WYGRANA!'] if gs.get('won') else None)
+        if overlay:
+            self._draw_overlay(overlay)
+
+    def _draw_overlay(self, lines: list):
+        """Półprzezroczysty pas z tekstem; pierwsza linia duża."""
+        h = 40 + 28 * len(lines)
+        y0 = CH // 2 - h // 2
+        self.canvas.create_rectangle(0, y0, CW, y0 + h, fill='#000000',
+                                     stipple='gray50', outline='', tags='dyn')
+        cy = y0 + 34
+        for i, line in enumerate(lines):
+            font = ('Segoe UI', 28, 'bold') if i == 0 else ('Segoe UI', 12)
+            self.canvas.create_text(CW // 2, cy, text=line, fill='#ffffff',
+                                    font=font, tags='dyn')
+            cy += 40 if i == 0 else 26
 
     def show_message(self, lines: list, color: str = C['text3']):
         self.canvas.delete('dyn')
@@ -169,7 +188,38 @@ class GameCanvas(tk.Frame):
                 fill=col, font=('Segoe UI', size), tags='dyn',
             )
             cy += 28
+            
+    def _draw_face(self, snake, ox, oy, db, gb, tick):
+        """Oczy i język na głowie, obrócone w stronę ruchu."""
+        hx, hy = snake[0][0] // gb, snake[0][1] // gb
+        if len(snake) > 1:
+            nx, ny = snake[1][0] // gb, snake[1][1] // gb
+            dx, dy = hx - nx, hy - ny        # (1,0)=prawo, (0,-1)=góra itd.
+        else:
+            dx, dy = 1, 0
+        cx = ox + hx * db + db / 2           # środek głowy w pikselach
+        cy = oy + hy * db + db / 2
+        px, py = -dy, dx                     # kierunek "na boki"
 
+        # Oczy: białko + źrenica patrząca do przodu
+        for strona in (-1, 1):
+            ex = cx + dx * db * 0.15 + px * strona * db * 0.22
+            ey = cy + dy * db * 0.15 + py * strona * db * 0.22
+            r = db * 0.13
+            self.canvas.create_oval(ex - r, ey - r, ex + r, ey + r,
+                                    fill='white', outline='', tags='dyn')
+            r2 = r * 0.55
+            zx, zy = ex + dx * r * 0.35, ey + dy * r * 0.35
+            self.canvas.create_oval(zx - r2, zy - r2, zx + r2, zy + r2,
+                                    fill='black', outline='', tags='dyn')
+
+        # Język – miga (widoczny przez pół sekundy co sekundę)
+        if (tick // 15) % 2 == 0:
+            tx, ty = cx + dx * db * 0.5, cy + dy * db * 0.5
+            self.canvas.create_line(tx, ty,
+                                    tx + dx * db * 0.25, ty + dy * db * 0.25,
+                                    fill='#ff3355',
+                                    width=max(2, int(db * 0.06)), tags='dyn')
 
 # ══════════════════════════════════════════════════════════════════════
 # StatsGraph – wykres live na tk.Canvas
@@ -605,12 +655,13 @@ class AStarPanel(tk.Frame):
                             font=('Segoe UI', 9), relief='groove')
         sts.pack(fill='x', **pad)
 
-        for key in ('score', 'best', 'game'):
+        for key in ('score', 'best', 'game', 'wins'):
             self.sv[key] = tk.StringVar(value='—')
 
         info = [('Wynik:', 'score', C['accent'],   0, 0),
                 ('Najlepszy:', 'best', C['accent3'], 0, 2),
-                ('Gra:',  'game',  C['text'],    1, 0)]
+                ('Gra:',  'game',  C['text'],    1, 0),
+                ('Wygrane:', 'wins', C['accent2'], 1, 2)]
         for lbl, key, col, row, c in info:
             tk.Label(sts, text=lbl, bg=C['panel'], fg=C['text2'],
                      font=('Segoe UI', 9)).grid(
@@ -659,6 +710,142 @@ class AStarPanel(tk.Frame):
         self.delay_i = min(len(self.DELAY_OPTS) - 1, self.delay_i + 1)
         self._delay_var.set(f'{self.DELAY_OPTS[self.delay_i]} ms')
 
+    def update_stats(self, score: int, best: int, game_n: int, wins: int = 0):
+        self.sv['score'].set(str(score))
+        self.sv['best'].set(str(best))
+        self.sv['game'].set(str(game_n))
+        self.sv['wins'].set(f'{wins}/{game_n}')
+        self.graph.add(float(score))
+
+    def set_active(self, active: bool):
+        self.btn_start.config(state='disabled' if active else 'normal')
+        self.btn_stop.config(state='normal' if active else 'disabled')
+
+    def set_status(self, text: str, color: str = C['text2']):
+        self.lbl_status.config(text=text, fg=color)
+
+    @property
+    def step_delay(self) -> float:
+        return self.DELAY_OPTS[self.delay_i] / 1000.0
+
+
+# ══════════════════════════════════════════════════════════════════════
+# PlayerPanel – samodzielna gra z klawiatury
+# ══════════════════════════════════════════════════════════════════════
+
+class PlayerPanel(tk.Frame):
+    """Panel zakładki Gracz: szybkość, sterowanie, statystyki, przyciski."""
+
+    SPEED_OPTS = [200, 150, 120, 100, 80, 60]   # ms na jeden krok węża
+
+    def __init__(self, parent, app, **kw):
+        super().__init__(parent, bg=C['panel'], **kw)
+        self.app     = app
+        self.speed_i = 2   # domyślnie 120 ms
+        self.sv: dict = {}
+        self._build()
+
+    def _build(self):
+        pad = {'padx': 10, 'pady': (6, 2)}
+
+        # Konfiguracja
+        cfg = tk.LabelFrame(self, text=' Konfiguracja ',
+                            bg=C['panel'], fg=C['text2'],
+                            font=('Segoe UI', 9), relief='groove')
+        cfg.pack(fill='x', **pad)
+
+        self._speed_var = tk.StringVar(value=f'{self.SPEED_OPTS[self.speed_i]} ms')
+        tk.Label(cfg, text='Krok co:', bg=C['panel'], fg=C['text2'],
+                 font=('Segoe UI', 9)).grid(row=0, column=0, sticky='w',
+                                             padx=(4, 8), pady=3)
+        tk.Button(cfg, text='−', command=self._speed_minus,
+                  bg=C['btn'], fg=C['text'], relief='flat',
+                  font=('Segoe UI', 10, 'bold'), width=2,
+                  cursor='hand2').grid(row=0, column=1, padx=(0, 2))
+        tk.Label(cfg, textvariable=self._speed_var,
+                 bg=C['panel2'], fg=C['accent'],
+                 font=('Segoe UI', 10, 'bold'), width=6,
+                 anchor='center').grid(row=0, column=2, padx=2)
+        tk.Button(cfg, text='+', command=self._speed_plus,
+                  bg=C['btn'], fg=C['text'], relief='flat',
+                  font=('Segoe UI', 10, 'bold'), width=2,
+                  cursor='hand2').grid(row=0, column=3, padx=(2, 0))
+        tk.Label(cfg, text='Siatka – ustawiana w zakładce DQN',
+                 bg=C['panel'], fg=C['text3'],
+                 font=('Segoe UI', 8)).grid(row=1, column=0, columnspan=5,
+                                             sticky='w', padx=4, pady=(0, 4))
+
+        # Sterowanie
+        ctl = tk.LabelFrame(self, text=' Sterowanie ',
+                            bg=C['panel'], fg=C['text2'],
+                            font=('Segoe UI', 9), relief='groove')
+        ctl.pack(fill='x', **pad)
+        for txt in ('← ↑ ↓ →  lub  W A S D  –  kierunek',
+                    'Spacja  –  start / pauza / nowa gra'):
+            tk.Label(ctl, text=txt, bg=C['panel'], fg=C['text'],
+                     font=('Segoe UI', 9)).pack(anchor='w', padx=6, pady=1)
+
+        # Statystyki
+        sts = tk.LabelFrame(self, text=' Statystyki ',
+                            bg=C['panel'], fg=C['text2'],
+                            font=('Segoe UI', 9), relief='groove')
+        sts.pack(fill='x', **pad)
+
+        for key in ('score', 'best', 'game'):
+            self.sv[key] = tk.StringVar(value='—')
+
+        info = [('Wynik:', 'score', C['accent'],   0, 0),
+                ('Najlepszy:', 'best', C['accent3'], 0, 2),
+                ('Gra:',  'game',  C['text'],    1, 0)]
+        for lbl, key, col, row, c in info:
+            tk.Label(sts, text=lbl, bg=C['panel'], fg=C['text2'],
+                     font=('Segoe UI', 9)).grid(
+                row=row, column=c, sticky='w', padx=(4, 2), pady=2)
+            tk.Label(sts, textvariable=self.sv[key],
+                     bg=C['panel'], fg=col,
+                     font=('Segoe UI', 11, 'bold')).grid(
+                row=row, column=c + 1, sticky='w', padx=(0, 14))
+
+        # Wykres
+        self.graph = StatsGraph(self, height=100)
+        self.graph.pack(fill='x', padx=10, pady=(2, 4))
+
+        # Przyciski
+        bf = tk.Frame(self, bg=C['panel'])
+        bf.pack(fill='x', padx=10, pady=(2, 6))
+
+        def btn(text, cmd, bg, bg_h=None):
+            return tk.Button(bf, text=text, command=cmd,
+                             bg=bg, fg=C['text'], relief='flat',
+                             font=('Segoe UI', 10), pady=5,
+                             activebackground=bg_h or bg,
+                             activeforeground='#ffffff',
+                             cursor='hand2',
+                             disabledforeground=C['text3'],
+                             takefocus=0)   # Spacja nie "klika" przycisków
+
+        self.btn_start = btn('▶  Zagraj', self.app.go_player,
+                             C['grn'], C['grn_h'])
+        self.btn_start.pack(fill='x', pady=2)
+
+        self.btn_stop = btn('■  ZAKOŃCZ', self.app.stop,
+                            C['stop'], C['stop_h'])
+        self.btn_stop.pack(fill='x', pady=(4, 2))
+        self.btn_stop.config(state='disabled')
+
+        self.lbl_status = tk.Label(bf, text='Gotowy',
+                                   bg=C['panel'], fg=C['text2'],
+                                   font=('Segoe UI', 9))
+        self.lbl_status.pack(anchor='w')
+
+    def _speed_minus(self):
+        self.speed_i = max(0, self.speed_i - 1)
+        self._speed_var.set(f'{self.SPEED_OPTS[self.speed_i]} ms')
+
+    def _speed_plus(self):
+        self.speed_i = min(len(self.SPEED_OPTS) - 1, self.speed_i + 1)
+        self._speed_var.set(f'{self.SPEED_OPTS[self.speed_i]} ms')
+
     def update_stats(self, score: int, best: int, game_n: int):
         self.sv['score'].set(str(score))
         self.sv['best'].set(str(best))
@@ -673,8 +860,8 @@ class AStarPanel(tk.Frame):
         self.lbl_status.config(text=text, fg=color)
 
     @property
-    def step_delay(self) -> float:
-        return self.DELAY_OPTS[self.delay_i] / 1000.0
+    def step_ms(self) -> int:
+        return self.SPEED_OPTS[self.speed_i]
 
 
 # ══════════════════════════════════════════════════════════════════════
@@ -703,6 +890,7 @@ class App(tk.Tk):
         self._sel_model:   str              = None
         self._last_mode:   str              = 'hybrid'
         self._active_mode: str              = 'dqn'
+        self._pl_sesja:    int              = 0   # chroni przed podwójną pętlą gracza
 
         self._build_ui()
         self._poll()
@@ -785,6 +973,17 @@ class App(tk.Tk):
         self.astar_panel = AStarPanel(astar_f, app=self)
         self.astar_panel.pack(fill='both', expand=True)
 
+        # zakładka Gracz
+        player_f = tk.Frame(nb, bg=C['panel'])
+        nb.add(player_f, text='  Gracz  ')
+        self.player_panel = PlayerPanel(player_f, app=self)
+        self.player_panel.pack(fill='both', expand=True)
+
+        # Wyjście z zakładki Gracz kończy grę – inaczej przyciski DQN/A*
+        # zostają wyszarzone, bo tryb gracza wciąż jest aktywny.
+        self.nb, self._player_tab = nb, player_f
+        nb.bind('<<NotebookTabChanged>>', self._on_tab_changed)
+
     # ── Pętla pollingu ─────────────────────────────────────
 
     def _poll(self):
@@ -797,9 +996,12 @@ class App(tk.Tk):
                 self._set_active(False)
                 self.dqn.set_status('Gotowy')
                 self.astar_panel.set_status('Gotowy')
+                self.player_panel.set_status('Gotowy')
                 if self._active_mode == 'dqn':
                     self.model_list.reload()
                     self._log('Zakończono. Modele zapisane.')
+                elif self._active_mode == 'player':
+                    self._log('Gra zakończona.')
                 else:
                     self._log('A* zatrzymany.')
                 with self.glock:
@@ -807,7 +1009,10 @@ class App(tk.Tk):
             elif d.get('benchmark'):
                 self._log(d['benchmark'])
             elif d.get('astar'):
-                self.astar_panel.update_stats(d['score'], d['best'], d['game'])
+                self.astar_panel.update_stats(d['score'], d['best'], d['game'],
+                                              d.get('wins', 0))
+            elif d.get('player'):
+                self.player_panel.update_stats(d['score'], d['best'], d['game'])
             else:
                 ep  = d.get('episode', 0)
                 tot = d.get('total', 0)
@@ -851,8 +1056,14 @@ class App(tk.Tk):
         self._active = v
         self.dqn.set_active(v)
         self.astar_panel.set_active(v)
+        self.player_panel.set_active(v)
         if not v:
             self.game_canvas.update_state(None)
+
+    def _on_tab_changed(self, _event=None):
+        if (self._active and self._active_mode == 'player'
+                and self.nb.select() != str(self._player_tab)):
+            self.stop()
 
     def _selected(self):
         return self._sel_model or self.model_list.selected()
@@ -939,6 +1150,7 @@ class App(tk.Tk):
         self.stop_ev.set()
         self.dqn.set_status('Zatrzymywanie…', C['danger'])
         self.astar_panel.set_status('Zatrzymywanie…', C['danger'])
+        self.player_panel.set_status('Zatrzymywanie…', C['danger'])
 
     # ── Wątki robocze ────────────────────────────────────────────────
 
@@ -1113,7 +1325,7 @@ class App(tk.Tk):
         from astar import wybierz_akcję as astar_akcja
         p    = self._game_params
         game = UproszczonySnake(p['szerokość'], p['wysokość'], p['rozmiar_bloku'])
-        best, game_n = 0, 0
+        best, game_n, wins = 0, 0, 0
 
         while not self.stop_ev.is_set():
             game.reset()
@@ -1130,6 +1342,7 @@ class App(tk.Tk):
                         food=list(game.jedzenie),
                         score=game.wynik,
                         path=ścieżka,
+                        won=game.wygrana,
                     )
 
                 d = self.astar_panel.step_delay
@@ -1139,10 +1352,131 @@ class App(tk.Tk):
             if score > best:
                 best = score
             game_n += 1
+            if game.wygrana:
+                wins += 1
+                # chwila na obejrzenie pełnej planszy (przerywalna STOP-em)
+                self.stop_ev.wait(2.0)
             self.sq.put({'astar': True, 'score': score,
-                         'best': best, 'game': game_n})
+                         'best': best, 'game': game_n, 'wins': wins})
 
         self.sq.put({'done': True})
+
+    # ── Gracz (sterowanie z klawiatury) ──────────────────────────────
+
+    _ZEGAR = [Kierunek.PRAWO, Kierunek.DÓŁ, Kierunek.LEWO, Kierunek.GÓRA]
+    _KLAWISZE = {
+        'Up': Kierunek.GÓRA,  'w': Kierunek.GÓRA,  'W': Kierunek.GÓRA,
+        'Down': Kierunek.DÓŁ, 's': Kierunek.DÓŁ,   'S': Kierunek.DÓŁ,
+        'Left': Kierunek.LEWO, 'a': Kierunek.LEWO, 'A': Kierunek.LEWO,
+        'Right': Kierunek.PRAWO, 'd': Kierunek.PRAWO, 'D': Kierunek.PRAWO,
+    }
+
+    def go_player(self):
+        if self._active:
+            return
+        self._active_mode = 'player'
+        self.stop_ev.clear()
+        self._clear_queue()
+        self.player_panel.graph.clear()
+        self.worker = None                # gra działa w głównym wątku (after)
+        self._set_active(True)
+        self.player_panel.set_status('Gra trwa', C['accent'])
+
+        grid_n = self.dqn.grid_size
+        self._log(f'Gracz | siatka {grid_n}×{grid_n}')
+        self.game_canvas.set_grid(grid_n)
+        self._pl_game = UproszczonySnake(grid_n * ROZMIAR_BLOKU,
+                                         grid_n * ROZMIAR_BLOKU,
+                                         ROZMIAR_BLOKU)
+        self._pl_best, self._pl_n = 0, 0
+        self._pl_nowa_gra()
+
+        # Klawisze łapiemy globalnie; fokus na canvas, żeby strzałki nie
+        # przełączały zakładek notebooka.
+        self.bind_all('<KeyPress>', self._pl_klawisz)
+        self.game_canvas.canvas.focus_set()
+
+        self._pl_sesja += 1
+        self._pl_tick(self._pl_sesja)
+
+    def _pl_nowa_gra(self):
+        self._pl_game.reset()
+        self._pl_skręty = []              # bufor wciśniętych kierunków
+        self._pl_stan   = 'gotowy'        # gotowy → gra → pauza / koniec
+        self._pl_publikuj(['GOTOWY?', 'Strzałka lub Spacja – start'])
+
+    def _pl_publikuj(self, overlay=None):
+        g = self._pl_game
+        with self.glock:
+            self.game_state = dict(
+                snake=[list(s) for s in g.snake],
+                food=list(g.jedzenie),
+                score=g.wynik,
+                won=g.wygrana,
+                overlay=overlay,
+            )
+
+    def _pl_klawisz(self, e):
+        if not self._active or self._active_mode != 'player':
+            return
+
+        if e.keysym == 'space':
+            if self._pl_stan == 'gra':
+                self._pl_stan = 'pauza'
+                self._pl_publikuj(['PAUZA', 'Spacja – wznów'])
+            elif self._pl_stan in ('gotowy', 'pauza'):
+                self._pl_stan = 'gra'
+            elif self._pl_stan == 'koniec':
+                self._pl_nowa_gra()
+            return 'break'
+
+        kier = self._KLAWISZE.get(e.keysym)
+        if kier is None or self._pl_stan == 'koniec':
+            return
+
+        # Porównujemy z ostatnim zakolejkowanym kierunkiem, nie z obecnym –
+        # dzięki temu szybkie "góra, lewo" w jednej klatce działa poprawnie,
+        # a zawrócenie o 180° jest ignorowane.
+        ostatni = self._pl_skręty[-1] if self._pl_skręty else self._pl_game.Kierunek
+        z = self._ZEGAR
+        zawrót = (z.index(kier) - z.index(ostatni)) % 4 == 2
+        if kier != ostatni and not zawrót and len(self._pl_skręty) < 3:
+            self._pl_skręty.append(kier)
+
+        if self._pl_stan in ('gotowy', 'pauza'):
+            self._pl_stan = 'gra'
+        return 'break'
+
+    def _pl_tick(self, sesja):
+        if sesja != self._pl_sesja:
+            return                         # stara pętla po restarcie – wygaś
+        if self.stop_ev.is_set():
+            self.unbind_all('<KeyPress>')
+            self.sq.put({'done': True})
+            return
+
+        if self._pl_stan == 'gra':
+            g = self._pl_game
+            akcja = 0                      # domyślnie prosto
+            if self._pl_skręty:
+                kier = self._pl_skręty.pop(0)
+                diff = (self._ZEGAR.index(kier) - self._ZEGAR.index(g.Kierunek)) % 4
+                akcja = {1: 1, 3: 2}.get(diff, 0)
+
+            _, _, done, score = g.krok(akcja)
+
+            if done:
+                self._pl_n += 1
+                self._pl_best = max(self._pl_best, score)
+                self._pl_stan = 'koniec'
+                self.sq.put({'player': True, 'score': score,
+                             'best': self._pl_best, 'game': self._pl_n})
+                tytuł = 'WYGRANA!' if g.wygrana else 'KONIEC GRY'
+                self._pl_publikuj([tytuł, f'Wynik: {score}', 'Spacja – nowa gra'])
+            else:
+                self._pl_publikuj()
+
+        self.after(self.player_panel.step_ms, lambda: self._pl_tick(sesja))
 
 
 # ── Uruchomienie ──────────────────────────────────────────────────────
