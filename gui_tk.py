@@ -10,16 +10,18 @@ import queue
 import os
 import time
 import math
+import platform
+import subprocess
 import numpy as np
 import torch
 
 from snake_game import UproszczonySnake, Kierunek
 from agent import DQNAgent
-from training import uruchom_epizod
+from training import uruchom_epizody
 import config
 from config import (
     SZEROKOŚĆ_OKNA, WYSOKOŚĆ_OKNA, ROZMIAR_BLOKU,
-    ROZMIAR_UKRYTY, KATALOG_MODELI,
+    ROZMIAR_UKRYTY, KATALOG_MODELI, ITERACJE_UCZENIA,
 )
 
 # ── Stałe wyświetlania ────────────────────────────────────────────────
@@ -59,6 +61,73 @@ C = {
     'gavg':    '#3c91ff',
     'gbg':     '#0d0d17',
 }
+
+
+# ══════════════════════════════════════════════════════════════════════
+# Wykrywanie sprzętu
+# ══════════════════════════════════════════════════════════════════════
+
+def _nazwa_procesora() -> str:
+    """Pełna nazwa procesora, np. 'AMD Ryzen 7 5800H with Radeon Graphics'."""
+    system = platform.system()
+    try:
+        if system == 'Windows':
+            import winreg
+            klucz = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE,
+                                   r'HARDWARE\DESCRIPTION\System\CentralProcessor\0')
+            return winreg.QueryValueEx(klucz, 'ProcessorNameString')[0].strip()
+        if system == 'Linux':
+            with open('/proc/cpuinfo', encoding='utf-8') as f:
+                for linia in f:
+                    if linia.startswith('model name'):
+                        return linia.split(':', 1)[1].strip()
+        if system == 'Darwin':
+            return subprocess.check_output(
+                ['sysctl', '-n', 'machdep.cpu.brand_string'], text=True).strip()
+    except Exception:
+        pass
+    return platform.processor() or 'nieznany procesor'
+
+
+def wykryj_sprzęt() -> dict:
+    """Zwraca {'cpu': opis procesora, 'gpu': opis karty lub None}."""
+    n = os.cpu_count() or 0
+    # polska odmiana: 2–4, 22–24… → „wątki”, reszta (5–21, 25…) → „wątków”
+    słowo = 'wątki' if n % 10 in (2, 3, 4) and n % 100 not in (12, 13, 14) else 'wątków'
+    cpu = f'{_nazwa_procesora()} ({n} {słowo})'
+    gpu = None
+    if torch.cuda.is_available():
+        p = torch.cuda.get_device_properties(0)
+        gpu = f'{p.name} ({p.total_memory / 1024**3:.0f} GB VRAM)'
+    return {'cpu': cpu, 'gpu': gpu}
+
+
+class Podpowiedź:
+    """Dymek z opisem, który pojawia się po najechaniu myszką na widżet."""
+
+    def __init__(self, widget, tekst: str):
+        self.w, self.tekst, self.okno = widget, tekst, None
+        widget.bind('<Enter>', self._pokaż, add='+')
+        widget.bind('<Leave>', self._ukryj, add='+')
+        widget.bind('<ButtonPress>', self._ukryj, add='+')
+
+    def _pokaż(self, _e=None):
+        if self.okno:
+            return
+        x = self.w.winfo_rootx() + 10
+        y = self.w.winfo_rooty() + self.w.winfo_height() + 4
+        self.okno = tk.Toplevel(self.w)
+        self.okno.wm_overrideredirect(True)        # bez ramki okna
+        self.okno.wm_geometry(f'+{x}+{y}')
+        tk.Label(self.okno, text=self.tekst, justify='left',
+                 bg='#26263a', fg=C['text'], font=('Segoe UI', 9),
+                 relief='solid', borderwidth=1, wraplength=320,
+                 padx=8, pady=5).pack()
+
+    def _ukryj(self, _e=None):
+        if self.okno:
+            self.okno.destroy()
+            self.okno = None
 
 
 # ══════════════════════════════════════════════════════════════════════
@@ -379,11 +448,21 @@ class ModelList(tk.Frame):
 # DQNPanel – konfiguracja i sterowanie DQN
 # ══════════════════════════════════════════════════════════════════════
 
+OPISY_STATYSTYK = {
+    'best':    'Najwyższy wynik w tym treningu – przy każdym nowym rekordzie '
+               'model zapisuje się jako <nazwa>_best_<siatka>.pth.',
+    'epsilon': 'Szansa na losowy ruch (eksploracja). Startuje od 1.0 i maleje – '
+               'agent coraz bardziej ufa temu, czego się nauczył.',
+    'loss':    'Błąd sieci: jak bardzo przewidywane wartości Q różnią się od '
+               'docelowych. Powinien maleć i się stabilizować.',
+}
+
+
 class DQNPanel(tk.Frame):
     """Panel zakładki DQN: konfiguracja, statystyki, wykres, przyciski."""
 
     EP_OPTS    = [50, 100, 200, 500, 1000, 5000, 10000, 25000, 50000, 100000]
-    PAR_OPTS   = [1, 2, 4, 8, 16, 32]
+    PAR_OPTS   = [1, 2, 4, 8, 16, 32, 64, 128]
     DELAY_OPTS = [1, 10, 25, 50, 100, 200]   # ms opóźnienia między krokami CPU
     GRID_OPTS  = [6, 8, 10, 12, 16, 20]       # komórek na bok (kwadratowa siatka)
 
@@ -392,6 +471,9 @@ class DQNPanel(tk.Frame):
         self.app     = app
         self.ep_i    = 2   # domyślnie 200 epizodów
         self.par_i   = 0
+        # Urządzenie dla sieci: GPU tylko jeśli PyTorch widzi kartę z CUDA
+        self.DEV_OPTS = ['cuda', 'cpu'] if torch.cuda.is_available() else ['cpu']
+        self.dev_i   = 0 if config.UŻYJ_GPU else len(self.DEV_OPTS) - 1
         self.delay_i = 1   # domyślnie 10 ms
         self.grid_i  = 1   # domyślnie 8×8
         self.sv: dict = {}
@@ -413,22 +495,72 @@ class DQNPanel(tk.Frame):
         self._delay_var = tk.StringVar(value=f'{self.DELAY_OPTS[self.delay_i]} ms')
         self._grid_var  = tk.StringVar(value=f'{self.GRID_OPTS[self.grid_i]}×{self.GRID_OPTS[self.grid_i]}')
 
-        self._stepper(cfg, 'Epizody:',          self._ep_var,
-                      self._ep_minus,    self._ep_plus,    row=0)
-        self._stepper(cfg, 'ilość gier przed uczeniem:',   self._par_var,
-                      self._par_minus,   self._par_plus,   row=1)
-        self._stepper(cfg, 'Opóźnienie (CPU):', self._delay_var,
-                      self._delay_minus, self._delay_plus, row=2)
-        self._stepper(cfg, 'Siatka:',           self._grid_var,
-                      self._grid_minus,  self._grid_plus,  row=3)
+        self._stepper(cfg, 'Epizody:', self._ep_var,
+                      self._ep_minus, self._ep_plus, row=0,
+                      opis='Ile gier łącznie rozegra agent podczas treningu.')
+        self._stepper(cfg, 'Gier równolegle:', self._par_var,
+                      self._par_minus, self._par_plus, row=2,
+                      opis='Tylko trening w tle: tyle gier toczy się naraz, a decyzje '
+                           'dla wszystkich liczy jedno zapytanie do sieci. Potem agent '
+                           'uczy się na zebranych ruchach. Więcej gier = lepsze '
+                           'wykorzystanie karty graficznej.')
+        self._stepper(cfg, 'Opóźnienie podglądu:', self._delay_var,
+                      self._delay_minus, self._delay_plus, row=4,
+                      opis='Tylko trening z podglądem: pauza między ruchami, żeby '
+                           'dało się oglądać grę. 1 ms = najszybciej.')
+        self._stepper(cfg, 'Siatka:', self._grid_var,
+                      self._grid_minus, self._grid_plus, row=6,
+                      opis='Rozmiar planszy w kratkach. Większa plansza = '
+                           'trudniejsza gra i dłuższy trening.')
+        self._dev_var = tk.StringVar(value=self._nazwa_urządzenia())
+        self._stepper(cfg, 'Sieć liczona na:', self._dev_var,
+                      self._dev_zmień, self._dev_zmień, row=8,
+                      opis=('GPU = karta graficzna, CPU = procesor. Dotyczy uczenia '
+                            'i decyzji sieci; sama gra zawsze działa na procesorze.')
+                           if len(self.DEV_OPTS) > 1 else
+                           'Brak karty z obsługą CUDA – dostępny tylko procesor.')
 
-        dev_text = 'GPU (CUDA)' if config.UŻYJ_GPU else 'CPU'
-        dev_col  = C['accent'] if config.UŻYJ_GPU else C['text3']
-        tk.Label(cfg, text=f'Urządzenie: {dev_text}',
-                 bg=C['panel'], fg=dev_col,
-                 font=('Segoe UI', 9)).grid(
-            row=4, column=0, columnspan=5, sticky='w',
-            pady=(4, 2), padx=4)
+        # Nazwa zapisywanych modeli (puste pole = nazwa domyślna)
+        tk.Label(cfg, text='Nazwa modelu:', bg=C['panel'], fg=C['text2'],
+                 font=('Segoe UI', 9)).grid(row=10, column=0, sticky='w',
+                                            padx=(4, 8), pady=(3, 0))
+        self._nazwa_var = tk.StringVar()
+        tk.Entry(cfg, textvariable=self._nazwa_var, width=16,
+                 bg=C['panel2'], fg=C['accent'], insertbackground=C['text'],
+                 relief='flat', font=('Segoe UI', 10, 'bold')).grid(
+            row=10, column=1, columnspan=3, sticky='we', pady=(3, 0))
+        self._pliki_var = tk.StringVar()
+        tk.Label(cfg, textvariable=self._pliki_var, bg=C['panel'], fg=C['text3'],
+                 font=('Segoe UI', 8), justify='left', wraplength=380).grid(
+            row=11, column=0, columnspan=4, sticky='w', padx=4, pady=(0, 4))
+        self._nazwa_var.trace_add('write', lambda *_: self._odśwież_pliki())
+        self._odśwież_pliki()
+
+        # Sprzęt
+        hw = tk.LabelFrame(self, text=' Sprzęt ',
+                           bg=C['panel'], fg=C['text2'],
+                           font=('Segoe UI', 9), relief='groove')
+        hw.pack(fill='x', **pad)
+        sprzęt = wykryj_sprzęt()
+
+        wiersze = [
+            ('Procesor:', sprzęt['cpu'], C['text']),
+            ('Karta graficzna:', sprzęt['gpu'] or 'brak obsługi CUDA',
+             C['text'] if sprzęt['gpu'] else C['text3']),
+        ]
+        for r, (etykieta, wartość, kolor) in enumerate(wiersze):
+            tk.Label(hw, text=etykieta, bg=C['panel'], fg=C['text2'],
+                     font=('Segoe UI', 9)).grid(row=r, column=0, sticky='nw',
+                                                 padx=(4, 8), pady=2)
+            tk.Label(hw, text=wartość, bg=C['panel'], fg=kolor,
+                     font=('Segoe UI', 9, 'bold'), justify='left',
+                     wraplength=260).grid(row=r, column=1, sticky='w', pady=2)
+        tk.Label(hw, text='Logika gry zawsze działa na procesorze; karta '
+                          'graficzna przyspiesza tylko obliczenia sieci.',
+                 bg=C['panel'], fg=C['text3'], font=('Segoe UI', 8),
+                 justify='left', wraplength=380).grid(
+            row=len(wiersze), column=0, columnspan=2, sticky='w',
+            padx=4, pady=(0, 4))
 
         # Statystyki
         sts = tk.LabelFrame(self, text=' Statystyki ',
@@ -455,17 +587,20 @@ class DQNPanel(tk.Frame):
         for idx, (lbl, key, col_idx) in enumerate(pairs):
             row = idx // 2
             c   = col_idx * 2
-            tk.Label(sts, text=lbl, bg=C['panel'], fg=C['text2'],
-                     font=('Segoe UI', 9)).grid(
-                row=row, column=c, sticky='w', padx=(4, 2), pady=2)
+            etykieta = tk.Label(sts, text=lbl, bg=C['panel'], fg=C['text2'],
+                                font=('Segoe UI', 9))
+            etykieta.grid(row=row, column=c, sticky='w', padx=(4, 2), pady=2)
+            if key in OPISY_STATYSTYK:
+                Podpowiedź(etykieta, OPISY_STATYSTYK[key])
             tk.Label(sts, textvariable=self.sv[key],
                      bg=C['panel'], fg=colors[key],
                      font=('Segoe UI', 11, 'bold')).grid(
                 row=row, column=c + 1, sticky='w', padx=(0, 14))
 
-        tk.Label(sts, text='Loss:', bg=C['panel'], fg=C['text2'],
-                 font=('Segoe UI', 9)).grid(
-            row=2, column=0, sticky='w', padx=(4, 2))
+        etykieta = tk.Label(sts, text='Loss:', bg=C['panel'], fg=C['text2'],
+                            font=('Segoe UI', 9))
+        etykieta.grid(row=2, column=0, sticky='w', padx=(4, 2))
+        Podpowiedź(etykieta, OPISY_STATYSTYK['loss'])
         tk.Label(sts, textvariable=self.sv['loss'],
                  bg=C['panel'], fg=C['text2'],
                  font=('Segoe UI', 9)).grid(
@@ -490,12 +625,12 @@ class DQNPanel(tk.Frame):
                 disabledforeground=C['text3'],
             )
 
-        self.btn_hybrid = btn(bf, '▶  Trening Hybrydowy',
+        self.btn_hybrid = btn(bf, '▶  Trening w tle',
                               lambda: self.app.go_train('hybrid'),
                               C['grn'], C['grn_h'])
         self.btn_hybrid.pack(fill='x', pady=2)
 
-        self.btn_cpu = btn(bf, '▶  Trening CPU',
+        self.btn_cpu = btn(bf, '▶  Trening z podglądem',
                            lambda: self.app.go_train('cpu'),
                            C['btn'], '#32324c')
         self.btn_cpu.pack(fill='x', pady=2)
@@ -506,11 +641,11 @@ class DQNPanel(tk.Frame):
 
         row2 = tk.Frame(bf, bg=C['panel'])
         row2.pack(fill='x', pady=2)
-        self.btn_cont_h = btn(row2, '↺  Kontynuuj Hybr.',
+        self.btn_cont_h = btn(row2, '↺  Kontynuuj w tle',
                               lambda: self.app.go_continue('hybrid'),
                               C['btn'], '#32324c')
         self.btn_cont_h.pack(side='left', fill='x', expand=True, padx=(0, 2))
-        self.btn_cont_c = btn(row2, '↺  Kontynuuj CPU',
+        self.btn_cont_c = btn(row2, '↺  Kontynuuj z podgl.',
                               lambda: self.app.go_continue('cpu'),
                               C['btn'], '#32324c')
         self.btn_cont_c.pack(side='left', fill='x', expand=True, padx=(2, 0))
@@ -525,10 +660,36 @@ class DQNPanel(tk.Frame):
                                    font=('Segoe UI', 9))
         self.lbl_status.pack(anchor='w')
 
-    def _stepper(self, parent, label, var, minus_cmd, plus_cmd, row: int):
+        # Opisy przycisków – pokazują się po najechaniu myszką
+        for przycisk, tekst in (
+            (self.btn_hybrid, 'Agent rozgrywa naraz tyle gier, ile ustawiono w '
+                              '„Gier równolegle” (bez podglądu), potem uczy się na '
+                              'zebranych ruchach. Najszybszy tryb.'),
+            (self.btn_cpu,    'Agent uczy się po każdym ruchu, a gra jest '
+                              'widoczna na planszy. Wolniej, ale widać postępy. '
+                              'Urządzenie wybierasz w „Sieć liczona na”.'),
+            (self.btn_test,   'Gra modelem zaznaczonym na liście – bez uczenia '
+                              'i bez losowych ruchów.'),
+            (self.btn_cont_h, 'Wczytuje zaznaczony model i trenuje go dalej '
+                              'w tle.'),
+            (self.btn_cont_c, 'Wczytuje zaznaczony model i trenuje go dalej '
+                              'z podglądem.'),
+            (self.btn_stop,   'Przerywa trening lub test. Przerwany trening '
+                              'też zapisuje model finalny (<nazwa>_final_<siatka>.pth).'),
+        ):
+            Podpowiedź(przycisk, tekst)
+
+    def _stepper(self, parent, label, var, minus_cmd, plus_cmd, row: int,
+                 opis: str = ''):
+        """Wiersz '−  wartość  +'; pod nim (row+1) szary opis opcji."""
         tk.Label(parent, text=label, bg=C['panel'], fg=C['text2'],
                  font=('Segoe UI', 9)).grid(
-            row=row, column=0, sticky='w', padx=(4, 8), pady=3)
+            row=row, column=0, sticky='w', padx=(4, 8), pady=(3, 0))
+        if opis:
+            tk.Label(parent, text=opis, bg=C['panel'], fg=C['text3'],
+                     font=('Segoe UI', 8), justify='left',
+                     wraplength=380).grid(row=row + 1, column=0, columnspan=4,
+                                          sticky='w', padx=4, pady=(0, 4))
         tk.Button(parent, text='−', command=minus_cmd,
                   bg=C['btn'], fg=C['text'], relief='flat',
                   font=('Segoe UI', 10, 'bold'), width=2,
@@ -572,13 +733,39 @@ class DQNPanel(tk.Frame):
         self.grid_i = max(0, self.grid_i - 1)
         n = self.GRID_OPTS[self.grid_i]
         self._grid_var.set(f'{n}×{n}')
+        self._odśwież_pliki()
         self.app.podgląd_siatki(n)
 
     def _grid_plus(self):
         self.grid_i = min(len(self.GRID_OPTS) - 1, self.grid_i + 1)
         n = self.GRID_OPTS[self.grid_i]
         self._grid_var.set(f'{n}×{n}')
+        self._odśwież_pliki()
         self.app.podgląd_siatki(n)
+
+    # ── Nazwy zapisywanych modeli ────────────────────────────────────
+
+    DOMYŚLNA_NAZWA = 'snake_model'
+
+    def _nazwa_bazowa(self) -> str:
+        """Nazwa z pola bez znaków zakazanych w nazwach plików Windows."""
+        nazwa = self._nazwa_var.get().strip()
+        if nazwa.lower().endswith('.pth'):
+            nazwa = nazwa[:-4]
+        nazwa = ''.join('_' if z in '<>:"/\\|?*' else z for z in nazwa)
+        nazwa = nazwa.strip(' .')
+        return nazwa or self.DOMYŚLNA_NAZWA
+
+    def nazwy_plików(self) -> tuple:
+        """(najlepszy, finalny), np. ('snake_model_best_8x8.pth', ...)."""
+        n = self.grid_size
+        baza = self._nazwa_bazowa()
+        return f'{baza}_best_{n}x{n}.pth', f'{baza}_final_{n}x{n}.pth'
+
+    def _odśwież_pliki(self):
+        best, final = self.nazwy_plików()
+        puste = '' if self._nazwa_var.get().strip() else 'Puste pole = nazwa domyślna. '
+        self._pliki_var.set(f'{puste}Zapisze: {best} i {final}')
 
     # ── API dla App ──────────────────────────────────────────────────
 
@@ -610,6 +797,17 @@ class DQNPanel(tk.Frame):
     @property
     def episodes(self) -> int:
         return self.EP_OPTS[self.ep_i]
+
+    def _nazwa_urządzenia(self) -> str:
+        return 'GPU' if self.DEV_OPTS[self.dev_i] == 'cuda' else 'CPU'
+
+    def _dev_zmień(self):
+        self.dev_i = (self.dev_i + 1) % len(self.DEV_OPTS)
+        self._dev_var.set(self._nazwa_urządzenia())
+
+    @property
+    def urządzenie(self) -> str:
+        return self.DEV_OPTS[self.dev_i]
 
     @property
     def parallel(self) -> int:
@@ -959,11 +1157,6 @@ class App(tk.Tk):
         tk.Label(hdr, text='Snake AI  ·  Deep Q-Network',
                  bg='#0e0e1a', fg=C['accent'],
                  font=('Segoe UI', 13, 'bold')).pack(side='left', padx=14)
-        tk.Label(hdr,
-                 text='GPU ON' if config.UŻYJ_GPU else 'CPU ONLY',
-                 bg='#0e0e1a',
-                 fg=C['accent'] if config.UŻYJ_GPU else C['text3'],
-                 font=('Segoe UI', 9)).pack(side='right', padx=14)
         tk.Frame(self, bg=C['border'], height=1).pack(fill='x', side='top')
 
         # stopka
@@ -1058,7 +1251,10 @@ class App(tk.Tk):
                 self.player_panel.set_status('Gotowy')
                 if self._active_mode == 'dqn':
                     self.model_list.reload()
-                    self._log('Zakończono. Modele zapisane.')
+                    if d.get('zapisane'):
+                        self._log(f"Zakończono. Zapisano: {d['zapisane']}")
+                    else:
+                        self._log('Zakończono.')
                 elif self._active_mode == 'player':
                     self._log('Gra zakończona.')
                 else:
@@ -1181,7 +1377,7 @@ class App(tk.Tk):
         self._active_mode = 'dqn'
         self.stop_ev.clear()
         self._clear_queue()
-        self.agent = agent or DQNAgent(11, 3, ROZMIAR_UKRYTY)
+        self.agent = agent or DQNAgent(11, 3, ROZMIAR_UKRYTY, urządzenie=self.dqn.urządzenie)
         self.dqn.graph.clear()
         with self.glock:
             self.game_state = None
@@ -1189,7 +1385,14 @@ class App(tk.Tk):
         self.dqn.set_status('Trening…', C['accent3'])
 
         grid_n = self.dqn.grid_size
-        self._log(f'Start {mode.upper()} | {self.dqn.episodes} ep | siatka {grid_n}×{grid_n}')
+        best_f, final_f = self.dqn.nazwy_plików()
+        self._plik_best  = os.path.join(KATALOG_MODELI, best_f)
+        self._plik_final = os.path.join(KATALOG_MODELI, final_f)
+        os.makedirs(KATALOG_MODELI, exist_ok=True)
+        tryb = 'w tle' if mode == 'hybrid' else 'z podglądem'
+        urz  = 'GPU' if self.agent.device.type == 'cuda' else 'CPU'
+        self._log(f'Trening {tryb} | sieć na {urz} | {self.dqn.episodes} ep | '
+                  f'siatka {grid_n}×{grid_n} | zapis: {best_f}, {final_f}')
         self.game_canvas.set_grid(grid_n)
 
         params = dict(szerokość=grid_n * ROZMIAR_BLOKU,
@@ -1212,7 +1415,7 @@ class App(tk.Tk):
         if not sel or self._active:
             return
         path  = os.path.join(KATALOG_MODELI, sel)
-        agent = DQNAgent(11, 3, ROZMIAR_UKRYTY)
+        agent = DQNAgent(11, 3, ROZMIAR_UKRYTY, urządzenie=self.dqn.urządzenie)
         if not agent.wczytaj(path):
             self._log(f'Błąd wczytywania: {sel}')
             return
@@ -1238,7 +1441,7 @@ class App(tk.Tk):
         if not sel or self._active:
             return
         path  = os.path.join(KATALOG_MODELI, sel)
-        agent = DQNAgent(11, 3, ROZMIAR_UKRYTY)
+        agent = DQNAgent(11, 3, ROZMIAR_UKRYTY, urządzenie=self.dqn.urządzenie)
         if not agent.wczytaj(path):
             self._log(f'Błąd wczytywania: {sel}')
             return
@@ -1274,19 +1477,15 @@ class App(tk.Tk):
             exps, scores = [], []
 
             t0 = time.perf_counter()
-            for _ in range(real_n):
-                if self.stop_ev.is_set():
-                    break
-                d, _, sc = uruchom_epizod(self.agent, params)
-                exps.extend(d)
-                scores.append(sc)
+            exps, scores = uruchom_epizody(self.agent, params, real_n,
+                                           stop_ev=self.stop_ev)
             t_collect_total += time.perf_counter() - t0
 
             ep += len(scores)
             for e in exps:
                 self.agent.zapamiętaj(*e)
 
-            iters = min(len(exps), 2000 if config.UŻYJ_GPU else 1000)
+            iters = min(len(exps), ITERACJE_UCZENIA)
             tl, nl = 0.0, 0
             t1 = time.perf_counter()
             for i in range(iters):
@@ -1305,7 +1504,7 @@ class App(tk.Tk):
             bh    = max(scores) if scores else 0
             if bh > best:
                 best = bh
-                self.agent.save(os.path.join(KATALOG_MODELI, 'snake_model_best.pth'))
+                self.agent.save(self._plik_best)
             self._push(scores[-1] if scores else 0, best, ep, total, avg_l)
 
             if (ch + 1) % 10 == 0:
@@ -1319,8 +1518,12 @@ class App(tk.Tk):
                 t_collect_total = 0.0
                 t_train_total   = 0.0
 
-        self.agent.save(os.path.join(KATALOG_MODELI, 'snake_model_final.pth'))
-        self.sq.put({'done': True})
+        self.agent.save(self._plik_final)
+        self.sq.put({'done': True, 'zapisane': self._zapisane_pliki()})
+
+    def _zapisane_pliki(self) -> str:
+        pliki = [self._plik_best, self._plik_final]
+        return ', '.join(os.path.basename(f) for f in pliki if os.path.exists(f))
 
     def _th_cpu(self, total):
         p    = self._game_params
@@ -1357,11 +1560,11 @@ class App(tk.Tk):
             avg_l = tl / nl if nl else 0.0
             if score > best:
                 best = score
-                self.agent.save(os.path.join(KATALOG_MODELI, 'snake_model_best.pth'))
+                self.agent.save(self._plik_best)
             self._push(score, best, ep_i + 1, total, avg_l)
 
-        self.agent.save(os.path.join(KATALOG_MODELI, 'snake_model_final.pth'))
-        self.sq.put({'done': True})
+        self.agent.save(self._plik_final)
+        self.sq.put({'done': True, 'zapisane': self._zapisane_pliki()})
 
     def _th_test(self):
         p     = self._game_params

@@ -7,7 +7,7 @@ import torch
 from tqdm import tqdm
 import matplotlib.pyplot as plt
 from snake_game import UproszczonySnake
-from config import UŻYJ_GPU
+from config import ITERACJE_UCZENIA
 import pygame
 from agent import DQNAgent
 from model import QNetwork
@@ -49,6 +49,52 @@ def uruchom_epizod(agent, parametry_gry, maks_kroków=10000):
         liczba_kroków += 1
     
     return doświadczenia, łączna_nagroda, wynik
+
+
+def uruchom_epizody(agent, parametry_gry, liczba_gier, maks_kroków=10000, stop_ev=None):
+    """
+    Rozgrywa kilka gier jednocześnie. W każdym kroku stany wszystkich
+    trwających gier idą do sieci JEDNYM zapytaniem (agent.pobierz_akcje),
+    zamiast osobnego zapytania na każdą grę – to tu karta graficzna
+    zaczyna się opłacać.
+
+    Przykład: 32 gry × 100 ruchów = 3200 decyzji. Po jednej grze naraz to
+    3200 zapytań do sieci; tutaj ~100 zapytań po 32 stany.
+
+    Args:
+        agent (DQNAgent): Agent podejmujący decyzje.
+        parametry_gry (dict): Parametry do inicjalizacji gry.
+        liczba_gier (int): Ile gier toczy się równolegle.
+        maks_kroków (int): Limit ruchów jednej gry.
+        stop_ev (threading.Event): Opcjonalnie – przerwanie z zewnątrz.
+
+    Returns:
+        tuple: Para (doświadczenia ze wszystkich gier, lista wyników).
+    """
+    gry = [UproszczonySnake(**parametry_gry) for _ in range(liczba_gier)]
+    stany = [g.reset() for g in gry]
+    kroki = [0] * liczba_gier
+    wyniki = [0] * liczba_gier
+    aktywne = list(range(liczba_gier))
+    doświadczenia = []
+
+    while aktywne:
+        if stop_ev is not None and stop_ev.is_set():
+            break
+        akcje = agent.pobierz_akcje(np.stack([stany[i] for i in aktywne]))
+        nadal = []
+        for i, akcja in zip(aktywne, akcje):
+            akcja = int(akcja)
+            następny_stan, nagroda, zakończone, wynik = gry[i].krok(akcja)
+            doświadczenia.append((stany[i], akcja, nagroda, następny_stan, zakończone))
+            stany[i] = następny_stan
+            wyniki[i] = wynik
+            kroki[i] += 1
+            if not zakończone and kroki[i] < maks_kroków:
+                nadal.append(i)
+        aktywne = nadal
+
+    return doświadczenia, wyniki
 
 
 def uruchom_epizod_mp(args):
@@ -112,11 +158,11 @@ def trenuj_hybrydowo(agent, parametry_gry, liczba_epizodów=1000, aktualizacja_d
     najlepszy_wynik = 0
     średnia_strata = 0
     
-    # Określamy tryb treningu na podstawie dostępności GPU
-    if UŻYJ_GPU:
-        print(f"Trening hybrydowy: zbieranie doświadczeń na CPU, trening na GPU.")
+    # Gra zawsze działa na procesorze; sieć – na urządzeniu agenta
+    if agent.device.type == 'cuda':
+        print(f"Trening w tle: {liczba_równoległych} gier równolegle, sieć na karcie graficznej.")
     else:
-        print(f"Trening na CPU z {liczba_równoległych} równoległymi grami.")
+        print(f"Trening w tle: {liczba_równoległych} gier równolegle, sieć na procesorze.")
     
     # Liczba grup epizodów do przeprowadzenia
     liczba_fragmentów = (liczba_epizodów + liczba_równoległych - 1) // liczba_równoległych
@@ -130,11 +176,10 @@ def trenuj_hybrydowo(agent, parametry_gry, liczba_epizodów=1000, aktualizacja_d
             wszystkie_doświadczenia = []
             wyniki_fragmentu = []
             
-            # Wykonujemy liczba_równoległych gier "równolegle"
-            for _ in range(rzeczywista_n):
-                doświadczenia, _, wynik = uruchom_epizod(agent, parametry_gry)
-                wszystkie_doświadczenia.extend(doświadczenia)
-                wyniki_fragmentu.append(wynik)
+            # Gry naprawdę toczą się równolegle – decyzje liczone wsadowo
+            doświadczenia, wyniki_gier = uruchom_epizody(agent, parametry_gry, rzeczywista_n)
+            wszystkie_doświadczenia.extend(doświadczenia)
+            wyniki_fragmentu.extend(wyniki_gier)
             
             # Aktualizacja statystyk
             wyniki.extend(wyniki_fragmentu)
@@ -144,9 +189,8 @@ def trenuj_hybrydowo(agent, parametry_gry, liczba_epizodów=1000, aktualizacja_d
             for exp in wszystkie_doświadczenia:
                 agent.zapamiętaj(*exp)
             
-            # Uczenie agenta na zebranych doświadczeniach
-            # W trybie GPU trenujemy intensywniej
-            iteracje_treningu = min(len(wszystkie_doświadczenia), 2000 if UŻYJ_GPU else 1000)
+            # Uczenie agenta na zebranych doświadczeniach (tyle samo na CPU i GPU)
+            iteracje_treningu = min(len(wszystkie_doświadczenia), ITERACJE_UCZENIA)
             
             łączna_strata = 0
             liczba_strat = 0
@@ -367,4 +411,3 @@ def testuj_agenta(agent, game, liczba_gier=5, opóźnienie=100):
     print(f"Wszystkie wyniki: {wyniki}")
     
     return średni_wynik, maks_wynik, wyniki
-            

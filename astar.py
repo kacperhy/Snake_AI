@@ -1,7 +1,6 @@
 """
-Algorytm A* + cykl Hamiltona do sterowania wężem (gwarantowana wygrana).
+Algorytm A* + cykl Hamiltona do sterowania wężem.
 
-Idea (Code Bullet "I Created a PERFECT SNAKE A.I.", pomysł Johna Tapsella):
 1. Budujemy cykl Hamiltona – trasę przechodzącą przez KAŻDĄ komórkę planszy
    dokładnie raz i wracającą do startu. Wąż jadący tylko po cyklu nigdy się
    nie zderzy i zawsze wypełni całą planszę – ale jest bardzo wolny.
@@ -21,9 +20,8 @@ _RUCHY = ((0, -1), (0, 1), (-1, 0), (1, 0))
 _ZEGAR = [Kierunek.PRAWO, Kierunek.DÓŁ, Kierunek.LEWO, Kierunek.GÓRA]
 
 
-# ─────────────────────────────────────────────────────────────────────────────
 # Cykl Hamiltona
-# ─────────────────────────────────────────────────────────────────────────────
+
 def _cykl_parzysta_wysokość(gw, gh):
     """
     Cykl dla gh parzystego. Przykład 4x4 (numery = kolejność odwiedzin):
@@ -43,19 +41,19 @@ def _cykl_parzysta_wysokość(gw, gh):
 
 
 def zbuduj_cykl(gw, gh):
-    """Zwraca listę komórek (col, row) tworzących cykl Hamiltona."""
+    #Zwraca listę komórek (col, row) tworzących cykl Hamiltona
     if gw < 2 or gh < 2:
-        raise ValueError("Plansza musi mieć co najmniej 2x2 kratki.")
+        raise ValueError("Zbyt mała plansza.")
     if gh % 2 == 0:
         return _cykl_parzysta_wysokość(gw, gh)
     if gw % 2 == 0:
         # Transpozycja: budujemy dla zamienionych wymiarów i zamieniamy współrzędne
         return [(r, c) for c, r in _cykl_parzysta_wysokość(gh, gw)]
-    raise ValueError(f"Plansza {gw}x{gh}: oba wymiary nieparzyste – cykl Hamiltona nie istnieje.")
+    raise ValueError(f"Plansza {gw}x{gh}: oba wymiary nieparzyste, cykl Hamiltona potrzebuje parz.")
 
 
 class _Planer:
-    """Trzyma cykl i numer pozycji każdej komórki w cyklu."""
+    #Trzyma cykl i numer pozycji każdej komórki w cyklu
 
     def __init__(self, gw, gh, ciało):
         self.gw, self.gh = gw, gh
@@ -63,25 +61,23 @@ class _Planer:
         self.N = len(self.cykl)
         self.poz = {c: i for i, c in enumerate(self.cykl)}
 
-        # Kierunek cyklu dopasowujemy do początkowego ułożenia węża,
-        # żeby ciało od razu leżało "w kolejce" (głowa tuż za szyją).
+        # Kierunek cyklu dopasowujemy do początkowego ułożenia węża
+        # żeby głowa była przed ogonem w kolejności cyklu
         if len(ciało) >= 2 and self.odl(ciało[1], ciało[0]) != 1:
             self.cykl.reverse()
             self.poz = {c: i for i, c in enumerate(self.cykl)}
 
     def odl(self, a, b):
-        """Ile kroków po cyklu z a do b (zawsze do przodu)."""
+        #Ile kroków po cyklu z a do b (zawsze do przodu)
         return (self.poz[b] - self.poz[a]) % self.N
 
     def następnik(self, a):
         return self.cykl[(self.poz[a] + 1) % self.N]
 
-
-# ─────────────────────────────────────────────────────────────────────────────
 # A*
-# ─────────────────────────────────────────────────────────────────────────────
+
 def _szukaj(start, cel, zablokowane, gw, gh):
-    """A* – zwraca listę komórek (col, row) od start do cel lub None."""
+    # algorytm zwraca listę komórek od start do cel lub None
     stos = [(0, start)]
     skąd = {start: None}
     koszt = {start: 0}
@@ -107,12 +103,9 @@ def _szukaj(start, cel, zablokowane, gw, gh):
                     skąd[nb] = bież
     return None
 
-
-# ─────────────────────────────────────────────────────────────────────────────
 # Wybór ruchu
-# ─────────────────────────────────────────────────────────────────────────────
 def _planer_dla(game, gw, gh, ciało):
-    """Planer jest liczony raz i trzymany na obiekcie gry (nowy po resecie)."""
+    #Planer jest liczony raz i trzymany na obiekcie gry 
     planer = getattr(game, "_planer_astar", None)
     nowa_gra = getattr(game, "iteracja_klatki", 0) == 0
     if planer is None or (planer.gw, planer.gh) != (gw, gh) or nowa_gra:
@@ -125,9 +118,8 @@ def wybierz_akcję(game):
     """
     Wybiera akcję dla węża (0=prosto, 1=prawo, 2=lewo).
 
-    Returns:
-        tuple: (akcja: int, ścieżka: list[(col,row)] lub None)
-               ścieżka jest zwracana, gdy wąż idzie skrótem A* (do wizualizacji)
+    Zwraca krotkę: (akcja: int, ścieżka: list[(col,row)] lub None)
+    ścieżka jest zwracana, gdy wąż idzie skrótem 
     """
     b = game.rozmiar_bloku
     gw = game.szerokość // b
@@ -149,19 +141,18 @@ def wybierz_akcję(game):
     def bezpieczny_skrót(n):
         """
         Skrót na pole n jest OK, jeśli:
-          - n jest przed ogonem w kolejności cyklu (nie przeskakujemy ciała),
-          - n nie jest za jedzeniem (nie ominiemy jedzenia – inaczej trzeba
-            by objechać cały cykl, żeby do niego wrócić).
+          - n jest przed ogonem w kolejności cyklu
+          - n nie jest za jedzeniem
         """
         d = planer.odl(głowa, n)
         return n not in ciało_bez_ogona and 0 < d < d_ogon and d <= d_jedz
 
-    # ── 1. A* do jedzenia, jeśli pierwszy krok jest bezpiecznym skrótem ──────
+    # A* do jedzenia jeśli pierwszy krok jest bezpiecznym skrótem
     ścieżka = _szukaj(głowa, jedzenie, ciało_bez_ogona, gw, gh)
     if ścieżka and len(ścieżka) >= 2 and bezpieczny_skrót(ścieżka[1]):
         return _na_akcję(game, ścieżka[1], b), ścieżka
 
-    # ── 2. Najdalszy bezpieczny skok po cyklu w stronę jedzenia ──────────────
+    # Najdalszy bezpieczny skok po cyklu w stronę jedzenia
     najlepszy, najlepsza_odl = None, 0
     for dx, dy in _RUCHY:
         n = (głowa[0] + dx, głowa[1] + dy)
@@ -172,12 +163,12 @@ def wybierz_akcję(game):
     if najlepszy is not None:
         return _na_akcję(game, najlepszy, b), None
 
-    # ── 3. Zwykły krok po cyklu – zawsze bezpieczny ──────────────────────────
+    # Zwykły krok po cyklu który jest zawsze bezpieczny
     return _na_akcję(game, planer.następnik(głowa), b), None
 
 
 def _na_akcję(game, następna, b):
-    """Tłumaczy docelową komórkę siatki na względną akcję (0/1/2)."""
+    # Tłumaczy docelową komórkę siatki na akcję 
     głowa = game.snake[0]
     dx = następna[0] * b - głowa[0]
     dy = następna[1] * b - głowa[1]

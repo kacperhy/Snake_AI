@@ -1,0 +1,83 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%% %
+%%% % weiiszablon.tex
+%%% % The Faculty of Electrical and Computer Engineering
+%%% % Rzeszow University Of Technology diploma thesis Template
+%%% % Szablon pracy dyplomowej Wydziału Elektrotechniki 
+%%% % i Informatyki PRz
+%%% % January, 2024
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\documentclass[12pt,twoside,openright]{article}
+
+\usepackage{weiiszablon}
+
+\author{Kacper Hyliński}
+
+% np. EF-123456, EN-654321, ...
+\studentID{177082}
+
+\title{Implementacja algorytmu DQN do budowania strategii agenta gry komputerowej}
+\titleEN{Implementation of the DQN algorithm for building a computer game agent's strategy}
+
+
+%%% wybierz rodzaj pracy wpisując jeden z poniższych numerów: ...
+% 1 = inżynierska	% BSc
+% 2 = magisterska	% MSc
+% 3 = doktorska		% PhD
+% 4 = praca inżynierska
+%%% na miejsce zera w linijce poniżej
+\newcommand{\rodzajPracyNo}{1}
+
+
+%%% promotor
+\supervisor{(dr hab. inż.) Roman Zajdel (prof. PRz)}
+%% przykład: dr hab. inż. Józef Nowak, prof. PRz
+
+%%% promotor ze stopniami naukowymi po angielsku
+\supervisorEN{Roman Zajdel, DSc, Eng., Associate Professor}
+
+\abstract{Treść streszczenia po polsku}
+\abstractEN{Treść streszczenia po angielsku}
+
+\keywords{max. 5 słów kluczowych w 2 wierszach, oddzielanych przecinkami}
+\keywordsEN{max. five keywords in English}
+
+
+\begin{document}
+
+% strona tytułowa
+\maketitle
+
+\cleardoublepage
+
+% spis treści
+\tableofcontents
+
+\cleardoublepage
+
+\input{rozdzialy/00-symbole}
+\input{rozdzialy/01-wstep}
+\input{rozdzialy/02-teoria}
+\input{rozdzialy/03-projekt}
+\input{rozdzialy/04-implementacja}
+% \input{rozdzialy/05-wyniki}   % czeka na decyzję promotora
+\input{rozdzialy/06-podsumowanie}
+
+\section*{Wykaz symboli, oznaczeń i skrótów (opcjonalny)}
+\addcontentsline{toc}{section}{Wykaz symboli, oznaczeń i skrótów (opcjonalny)}%
+
+1 $\div$ 2 stron wykaz ważniejszych symboli i oznaczeń (jeśli jest potrzebny).
+
+
+\clearpage
+
+\addcontentsline{toc}{section}{Literatura}
+\bibliographystyle{unsrt}
+\bibliography{literatura}
+
+\clearpage
+
+\makesummary
+
+\end{document} 
