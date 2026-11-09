@@ -11,6 +11,7 @@
 \documentclass[12pt,twoside,openright]{article}
 
 \usepackage{weiiszablon}
+\usepackage{amssymb}
 
 \author{Kacper Hyliński}
 
@@ -31,17 +32,18 @@
 
 
 %%% promotor
-\supervisor{(dr hab. inż.) Roman Zajdel (prof. PRz)}
+\supervisor{dr hab. inż. Roman Zajdel prof. PRz}
 %% przykład: dr hab. inż. Józef Nowak, prof. PRz
 
 %%% promotor ze stopniami naukowymi po angielsku
 \supervisorEN{Roman Zajdel, DSc, Eng., Associate Professor}
 
-\abstract{Treść streszczenia po polsku}
-\abstractEN{Treść streszczenia po angielsku}
+\abstract{Praca dotyczy zastosowania uczenia ze wzmocnieniem w grach komputerowych. Przedstawiono podstawy teoretyczne uczenia ze wzmocnieniem, przykłady jego wykorzystania w grach oraz przegląd algorytmów i bibliotek programistycznych. W części praktycznej zaimplementowano w języku Python agenta grającego w grę Snake z wykorzystaniem algorytmu Deep Q-Network w wariancie Double DQN. Opracowano środowisko gry w wersji graficznej oraz uproszczonej, przyspieszającej trening, a także reprezentację stanu w postaci 11 cech binarnych i funkcję nagrody z elementami kształtowania. Sieć neuronową zrealizowano w bibliotece PyTorch z możliwością prowadzenia treningu na procesorze graficznym.}
 
-\keywords{max. 5 słów kluczowych w 2 wierszach, oddzielanych przecinkami}
-\keywordsEN{max. five keywords in English}
+\abstractEN{The thesis concerns the application of reinforcement learning in computer games. It presents the theoretical foundations of reinforcement learning, examples of its use in games, and a review of algorithms and software libraries. In the practical part, an agent playing the game Snake was implemented in Python using the Deep Q-Network algorithm in its Double DQN variant. A game environment was developed in a graphical version and a simplified version that accelerates training, together with a state representation of 11 binary features and a shaped reward function. The neural network was implemented in PyTorch with support for GPU training.}
+
+\keywords{uczenie ze wzmocnieniem, Deep Q-Network, Double DQN, gra Snake, PyTorch}
+\keywordsEN{reinforcement learning, Deep Q-Network, Double DQN, Snake game, PyTorch}
 
 
 \begin{document}
@@ -58,16 +60,12 @@
 
 \input{rozdzialy/00-symbole}
 \input{rozdzialy/01-wstep}
-\input{rozdzialy/02-teoria}
-\input{rozdzialy/03-projekt}
-\input{rozdzialy/04-implementacja}
-% \input{rozdzialy/05-wyniki}   % czeka na decyzję promotora
-\input{rozdzialy/06-podsumowanie}
+\input{rozdzialy/02-rl-w-grach}
+\input{rozdzialy/03-przeglad}
+\input{rozdzialy/04-projekt}
+\input{rozdzialy/05-implementacja}
+\input{rozdzialy/07-podsumowanie}
 
-\section*{Wykaz symboli, oznaczeń i skrótów (opcjonalny)}
-\addcontentsline{toc}{section}{Wykaz symboli, oznaczeń i skrótów (opcjonalny)}%
-
-1 $\div$ 2 stron wykaz ważniejszych symboli i oznaczeń (jeśli jest potrzebny).
 
 
 \clearpage

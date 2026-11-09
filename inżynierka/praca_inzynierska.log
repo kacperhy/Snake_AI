@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.29 (TeX Live 2026) (preloaded format=pdflatex 2026.11.9)  9 NOV 2026 09:14
+This is pdfTeX, Version 3.141592653-2.6-1.40.29 (TeX Live 2026) (preloaded format=pdflatex 2026.11.9)  9 NOV 2026 11:06
 entering extended mode
  restricted \write18 enabled.
  file:line:error style messages enabled.
@@ -685,8 +685,16 @@ Package uniquecounter Info: New unique counter `rerunfilecheck' on input line 28
 \old@cftbeforesecskip=\skip99
 \mylen=\skip100
 \fooboxMU=\box72
-)
-LaTeX Font Info:    Trying to load font information for T1+lmr on input line 47.
+) (c:/texlive/2026/texmf-dist/tex/latex/amsfonts/amssymb.sty
+Package: amssymb 2013/01/14 v3.01 AMS font symbols
+ (c:/texlive/2026/texmf-dist/tex/latex/amsfonts/amsfonts.sty
+Package: amsfonts 2013/01/14 v3.01 Basic AMSFonts support
+\symAMSa=\mathgroup6
+\symAMSb=\mathgroup7
+LaTeX Font Info:    Overwriting math alphabet `\mathfrak' in version `bold'
+(Font)                  U/euf/m/n --> U/euf/b/n on input line 106.
+))
+LaTeX Font Info:    Trying to load font information for T1+lmr on input line 49.
  (c:/texlive/2026/texmf-dist/tex/latex/lm/t1lmr.fd
 File: t1lmr.fd 2015/05/01 v1.6.1 Font defs for Latin Modern
 ) (c:/texlive/2026/texmf-dist/tex/latex/l3kernel/l3backend-pdftex.def
@@ -697,29 +705,30 @@ File: l3backend-pdftex.def 2026-09-09 L3 backend support: PDF output (pdfTeX)
 LaTeX Warning: Unused global option(s):
     [openright].
 
-(./praca_inzynierska.aux)
+(./praca_inzynierska.aux
+Package babel Info: 'polish' activates 'polish' shorthands.
+(babel)             Reported on input line 8.
+)
 \openout1 = `praca_inzynierska.aux'.
 
-LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 47.
-LaTeX Font Info:    ... okay on input line 47.
-LaTeX Font Info:    Checking defaults for OMS/cmsy/m/n on input line 47.
-LaTeX Font Info:    ... okay on input line 47.
-LaTeX Font Info:    Checking defaults for OT1/cmr/m/n on input line 47.
-LaTeX Font Info:    ... okay on input line 47.
-LaTeX Font Info:    Checking defaults for T1/cmr/m/n on input line 47.
-LaTeX Font Info:    ... okay on input line 47.
-LaTeX Font Info:    Checking defaults for TS1/cmr/m/n on input line 47.
-LaTeX Font Info:    ... okay on input line 47.
-LaTeX Font Info:    Checking defaults for OMX/cmex/m/n on input line 47.
-LaTeX Font Info:    ... okay on input line 47.
-LaTeX Font Info:    Checking defaults for U/cmr/m/n on input line 47.
-LaTeX Font Info:    ... okay on input line 47.
-LaTeX Font Info:    Checking defaults for PD1/pdf/m/n on input line 47.
-LaTeX Font Info:    ... okay on input line 47.
-LaTeX Font Info:    Checking defaults for PU/pdf/m/n on input line 47.
-LaTeX Font Info:    ... okay on input line 47.
-Package babel Info: 'polish' activates 'polish' shorthands.
-(babel)             Reported on input line 47.
+LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 49.
+LaTeX Font Info:    ... okay on input line 49.
+LaTeX Font Info:    Checking defaults for OMS/cmsy/m/n on input line 49.
+LaTeX Font Info:    ... okay on input line 49.
+LaTeX Font Info:    Checking defaults for OT1/cmr/m/n on input line 49.
+LaTeX Font Info:    ... okay on input line 49.
+LaTeX Font Info:    Checking defaults for T1/cmr/m/n on input line 49.
+LaTeX Font Info:    ... okay on input line 49.
+LaTeX Font Info:    Checking defaults for TS1/cmr/m/n on input line 49.
+LaTeX Font Info:    ... okay on input line 49.
+LaTeX Font Info:    Checking defaults for OMX/cmex/m/n on input line 49.
+LaTeX Font Info:    ... okay on input line 49.
+LaTeX Font Info:    Checking defaults for U/cmr/m/n on input line 49.
+LaTeX Font Info:    ... okay on input line 49.
+LaTeX Font Info:    Checking defaults for PD1/pdf/m/n on input line 49.
+LaTeX Font Info:    ... okay on input line 49.
+LaTeX Font Info:    Checking defaults for PU/pdf/m/n on input line 49.
+LaTeX Font Info:    ... okay on input line 49.
 
 *geometry* driver: auto-detecting
 *geometry* detected driver: pdftex
@@ -778,23 +787,24 @@ File: epstopdf-sys.cfg 2010/07/13 v1.3 Configuration of (r)epstopdf for TeX Live
 Package caption Info: Begin \AtBeginDocument code.
 Package caption Info: hyperref package is loaded.
 Package caption Info: End \AtBeginDocument code.
-Package hyperref Info: Link coloring OFF on input line 47.
+Package hyperref Info: Link coloring OFF on input line 49.
+ (./praca_inzynierska.out) (./praca_inzynierska.out)
 \@outlinefile=\write5
 \openout5 = `praca_inzynierska.out'.
 
 Package babel Info: Main language set to 'polish'.
-<auxiliary/logoweii.jpg, id=7, 400.1349pt x 117.67966pt>
+<auxiliary/logoweii.jpg, id=142, 400.1349pt x 117.67966pt>
 File: auxiliary/logoweii.jpg Graphic file (type jpg)
 <use auxiliary/logoweii.jpg>
-Package pdftex.def Info: auxiliary/logoweii.jpg  used on input line 50.
+Package pdftex.def Info: auxiliary/logoweii.jpg  used on input line 52.
 (pdftex.def)             Requested size: 355.65944pt x 104.60167pt.
 
-Underfull \hbox (badness 10000) in paragraph at lines 50--50
+Underfull \hbox (badness 10000) in paragraph at lines 52--52
 
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 50--50
+Underfull \hbox (badness 10000) in paragraph at lines 52--52
 
  []
 
@@ -802,35 +812,147 @@ Underfull \hbox (badness 10000) in paragraph at lines 50--50
 
 {c:/texlive/2026/texmf-var/fonts/map/pdftex/updmap/pdftex.map}{c:/texlive/2026/texmf-dist/fonts/enc/dvips/lm/lm-ec.enc} <./auxiliary/logoweii.jpg>] [2
 
-]
-No file praca_inzynierska.toc.
+] (./praca_inzynierska.toc
+LaTeX Font Info:    Trying to load font information for OT1+lmr on input line 2.
+ (c:/texlive/2026/texmf-dist/tex/latex/lm/ot1lmr.fd
+File: ot1lmr.fd 2015/05/01 v1.6.1 Font defs for Latin Modern
+)
+LaTeX Font Info:    Trying to load font information for OML+lmm on input line 2.
+ (c:/texlive/2026/texmf-dist/tex/latex/lm/omllmm.fd
+File: omllmm.fd 2015/05/01 v1.6.1 Font defs for Latin Modern
+)
+LaTeX Font Info:    Trying to load font information for OMS+lmsy on input line 2.
+ (c:/texlive/2026/texmf-dist/tex/latex/lm/omslmsy.fd
+File: omslmsy.fd 2015/05/01 v1.6.1 Font defs for Latin Modern
+)
+LaTeX Font Info:    Trying to load font information for OMX+lmex on input line 2.
+ (c:/texlive/2026/texmf-dist/tex/latex/lm/omxlmex.fd
+File: omxlmex.fd 2015/05/01 v1.6.1 Font defs for Latin Modern
+)
+LaTeX Font Info:    External font `lmex10' loaded for size
+(Font)              <12> on input line 2.
+LaTeX Font Info:    External font `lmex10' loaded for size
+(Font)              <9> on input line 2.
+LaTeX Font Info:    External font `lmex10' loaded for size
+(Font)              <7> on input line 2.
+LaTeX Font Info:    Trying to load font information for OT1+ptm on input line 2.
+ (c:/texlive/2026/texmf-dist/tex/latex/psnfss/ot1ptm.fd
+File: ot1ptm.fd 2001/06/04 font definitions for OT1/ptm.
+)
+LaTeX Font Info:    Font shape `OT1/ptm/bx/n' in size <12> not available
+(Font)              Font shape `OT1/ptm/b/n' tried instead on input line 2.
+LaTeX Font Info:    Font shape `OT1/ptm/bx/n' in size <9> not available
+(Font)              Font shape `OT1/ptm/b/n' tried instead on input line 2.
+LaTeX Font Info:    Font shape `OT1/ptm/bx/n' in size <7> not available
+(Font)              Font shape `OT1/ptm/b/n' tried instead on input line 2.
+
+Underfull \vbox (badness 3058) has occurred while \output is active []
+
+ [3])
 \tf@toc=\write6
 \openout6 = `praca_inzynierska.toc'.
 
-[3] [4
+ [4] (./rozdzialy/00-symbole.tex) (./rozdzialy/01-wstep.tex [5
+
+
+] [6
 
 ]
 
-! LaTeX Error: File `rozdzialy/00-symbole.tex' not found.
+LaTeX Warning: Citation `hart1968' on page 7 undefined on input line 16.
 
-Type X to quit or <RETURN> to proceed,
-or enter new name. (Default extension: tex)
 
-Enter file name: 
-c:/Users/kacpe/OneDrive/Dokumenty/GitHub/Snake_AI/inżynierka/praca_inzynierska.tex:59: Emergency stop.
-<read *> 
-         
-l.59 \input{rozdzialy/00-symbole}
-                                 ^^M
-*** (cannot \read from terminal in nonstop modes)
+Underfull \vbox (badness 10000) has occurred while \output is active []
 
- 
+ [7]) (./rozdzialy/02-rl-w-grach.tex [8] [9
+
+{c:/texlive/2026/texmf-dist/fonts/enc/dvips/lm/lm-mathit.enc}{c:/texlive/2026/texmf-dist/fonts/enc/dvips/lm/lm-rm.enc}{c:/texlive/2026/texmf-dist/fonts/enc/dvips/lm/lm-mathsy.enc}] [10{c:/texlive/2026/texmf-dist/fonts/enc/dvips/lm/lm-mathex.enc}]
+Overfull \hbox (6.68042pt too wide) in paragraph at lines 83--84
+\T1/lmr/m/n/12 Metody ucze-nia ze wzmoc-nie-niem wy-ko-rzy-sty-wane w prak-tyce, w tym al-go-rytm DQN [[]],
+ []
+
+LaTeX Font Info:    External font `lmex10' loaded for size
+(Font)              <10.95> on input line 92.
+LaTeX Font Info:    External font `lmex10' loaded for size
+(Font)              <8> on input line 92.
+LaTeX Font Info:    External font `lmex10' loaded for size
+(Font)              <6> on input line 92.
+LaTeX Font Info:    Font shape `OT1/ptm/bx/n' in size <10.95> not available
+(Font)              Font shape `OT1/ptm/b/n' tried instead on input line 92.
+LaTeX Font Info:    Font shape `OT1/ptm/bx/n' in size <8> not available
+(Font)              Font shape `OT1/ptm/b/n' tried instead on input line 92.
+LaTeX Font Info:    Font shape `OT1/ptm/bx/n' in size <6> not available
+(Font)              Font shape `OT1/ptm/b/n' tried instead on input line 92.
+[11]) (./rozdzialy/03-przeglad.tex [12]) (./rozdzialy/04-projekt.tex [13
+
+] [14
+
+]) (./rozdzialy/05-implementacja.tex [15] [16
+
+]) (./rozdzialy/07-podsumowanie.tex [17] [18
+
+]) [19] (./praca_inzynierska.bbl [20
+
+
+]
+LaTeX Font Info:    Trying to load font information for T1+lmtt on input line 36.
+ (c:/texlive/2026/texmf-dist/tex/latex/lm/t1lmtt.fd
+File: t1lmtt.fd 2015/05/01 v1.6.1 Font defs for Latin Modern
+)) [21]
+LaTeX Font Info:    External font `lmex10' loaded for size
+(Font)              <10> on input line 79.
+LaTeX Font Info:    External font `lmex10' loaded for size
+(Font)              <7.4> on input line 79.
+LaTeX Font Info:    Font shape `OT1/ptm/bx/n' in size <10> not available
+(Font)              Font shape `OT1/ptm/b/n' tried instead on input line 79.
+LaTeX Font Info:    Font shape `OT1/ptm/bx/n' in size <7.4> not available
+(Font)              Font shape `OT1/ptm/b/n' tried instead on input line 79.
+
+Overfull \hbox (14.2264pt too wide) in paragraph at lines 79--79
+[][]| 
+ []
+
+
+Overfull \hbox (14.2264pt too wide) in paragraph at lines 79--79
+[][]| 
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 79--79
+[][]
+ []
+
+
+Package caption Warning: Unused \captionsetup[lstlisting] on input line 175.
+See the caption package documentation for explanation.
+
+[22
+
+] (./praca_inzynierska.aux)
+ ***********
+LaTeX2e <2026-11-01>
+L3 programming layer <2026-09-09>
+ ***********
+
+
+LaTeX Warning: There were undefined references.
+
+Package rerunfilecheck Info: File `praca_inzynierska.out' has not changed.
+(rerunfilecheck)             Checksum: A50FF18931E537D9CF2C091A96C6D566;5895.
+ ) 
 Here is how much of TeX's memory you used:
- 27461 strings out of 466968
- 494364 string characters out of 5407725
- 902858 words of memory out of 5000000
- 56510 multiletter control sequences out of 15000+600000
- 644551 words of font info for 47 fonts, out of 8000000 for 9000
+ 28397 strings out of 466968
+ 509614 string characters out of 5407725
+ 916070 words of memory out of 5000000
+ 57289 multiletter control sequences out of 15000+600000
+ 710941 words of font info for 113 fonts, out of 8000000 for 9000
  1141 hyphenation exceptions out of 8191
- 107i,6n,118p,554b,1905s stack positions out of 10000i,1000n,20000p,200000b,200000s
-c:/Users/kacpe/OneDrive/Dokumenty/GitHub/Snake_AI/inżynierka/praca_inzynierska.tex:59:  ==> Fatal error occurred, no output PDF file produced!
+ 107i,12n,118p,952b,2240s stack positions out of 10000i,1000n,20000p,200000b,200000s
+<c:/texlive/2026/texmf-dist/fonts/type1/public/lm/lmbx10.pfb><c:/texlive/2026/texmf-dist/fonts/type1/public/lm/lmbx12.pfb><c:/texlive/2026/texmf-dist/fonts/type1/public/lm/lmex10.pfb><c:/texlive/2026/texmf-dist/fonts/type1/public/lm/lmmi10.pfb><c:/texlive/2026/texmf-dist/fonts/type1/public/lm/lmmi12.pfb><c:/texlive/2026/texmf-dist/fonts/type1/public/lm/lmmi8.pfb><c:/texlive/2026/texmf-dist/fonts/type1/public/lm/lmmi9.pfb><c:/texlive/2026/texmf-dist/fonts/type1/public/lm/lmr10.pfb><c:/texlive/2026/texmf-dist/fonts/type1/public/lm/lmr12.pfb><c:/texlive/2026/texmf-dist/fonts/type1/public/lm/lmr17.pfb><c:/texlive/2026/texmf-dist/fonts/type1/public/lm/lmr8.pfb><c:/texlive/2026/texmf-dist/fonts/type1/public/lm/lmr9.pfb><c:/texlive/2026/texmf-dist/fonts/type1/public/lm/lmri12.pfb><c:/texlive/2026/texmf-dist/fonts/type1/public/lm/lmsy10.pfb><c:/texlive/2026/texmf-dist/fonts/type1/public/lm/lmsy7.pfb><c:/texlive/2026/texmf-dist/fonts/type1/public/lm/lmsy9.pfb><c:/texlive/2026/texmf-dist/fonts/type1/public/lm/lmtt12.pfb><c:/texlive/2026/texmf-dist/fonts/type1/public/amsfonts/symbols/msbm10.pfb>
+Output written on praca_inzynierska.pdf (22 pages, 958450 bytes).
+PDF statistics:
+ 455 PDF objects out of 1000 (max. 8388607)
+ 386 compressed objects within 4 object streams
+ 73 named destinations out of 1000 (max. 500000)
+ 290 words of extra memory for PDF output out of 10000 (max. 10000000)
+

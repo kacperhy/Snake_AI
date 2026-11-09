@@ -1,0 +1,35 @@
+\babel@toc {polish}{}\relax 
+\contentsline {section}{Wykaz symboli, oznaczeń i skrótów}{5}{Doc-Start}%
+\contentsline {section}{\numberline {1}Wstęp}{7}{section.1}%
+\contentsline {subsection}{\numberline {1.1}Motywacja i zarys problemu}{7}{subsection.1.1}%
+\contentsline {subsection}{\numberline {1.2}Struktura pracy}{8}{subsection.1.2}%
+\contentsline {subsection}{\numberline {1.3}Cel i zakres pracy}{8}{subsection.1.3}%
+\contentsline {section}{\numberline {2}Uczenie ze wzmocnieniem w grach komputerowych}{9}{section.2}%
+\contentsline {subsection}{\numberline {2.1}Podstawy uczenia ze wzmocnieniem}{9}{subsection.2.1}%
+\contentsline {subsubsection}{\numberline {2.1.1}Proces decyzyjny Markowa}{9}{subsubsection.2.1.1}%
+\contentsline {subsubsection}{\numberline {2.1.2}Zwrot i współczynnik dyskontowania}{10}{subsubsection.2.1.2}%
+\contentsline {subsubsection}{\numberline {2.1.3}Strategia i funkcje wartości}{10}{subsubsection.2.1.3}%
+\contentsline {subsubsection}{\numberline {2.1.4}Równania Bellmana}{10}{subsubsection.2.1.4}%
+\contentsline {subsection}{\numberline {2.2}Sieci neuronowe}{11}{subsection.2.2}%
+\contentsline {subsubsection}{\numberline {2.2.1}Model neuronu}{11}{subsubsection.2.2.1}%
+\contentsline {subsection}{\numberline {2.3}Gry jako środowisko badawcze}{12}{subsection.2.3}%
+\contentsline {subsection}{\numberline {2.4}Przykłady zastosowań}{12}{subsection.2.4}%
+\contentsline {section}{\numberline {3}Przegląd algorytmów i bibliotek}{13}{section.3}%
+\contentsline {subsection}{\numberline {3.1}Algorytmy tablicowe}{13}{subsection.3.1}%
+\contentsline {subsection}{\numberline {3.2}Głębokie algorytmy oparte na wartości}{13}{subsection.3.2}%
+\contentsline {subsection}{\numberline {3.3}Metody gradientu strategii}{13}{subsection.3.3}%
+\contentsline {subsection}{\numberline {3.4}Biblioteki uczenia ze wzmocnieniem}{13}{subsection.3.4}%
+\contentsline {subsection}{\numberline {3.5}Uzasadnienie wyboru rozwiązania}{13}{subsection.3.5}%
+\contentsline {section}{\numberline {4}Projekt systemu}{15}{section.4}%
+\contentsline {subsection}{\numberline {4.1}Środowisko gry Snake}{15}{subsection.4.1}%
+\contentsline {subsection}{\numberline {4.2}Reprezentacja stanu}{15}{subsection.4.2}%
+\contentsline {subsection}{\numberline {4.3}Funkcja nagrody}{15}{subsection.4.3}%
+\contentsline {subsection}{\numberline {4.4}Architektura systemu}{15}{subsection.4.4}%
+\contentsline {section}{\numberline {5}Implementacja}{17}{section.5}%
+\contentsline {subsection}{\numberline {5.1}Implementacja środowiska gry}{17}{subsection.5.1}%
+\contentsline {subsection}{\numberline {5.2}Sieć neuronowa}{17}{subsection.5.2}%
+\contentsline {subsection}{\numberline {5.3}Agent DQN}{17}{subsection.5.3}%
+\contentsline {subsection}{\numberline {5.4}Proces uczenia}{17}{subsection.5.4}%
+\contentsline {subsection}{\numberline {5.5}Interfejs graficzny}{17}{subsection.5.5}%
+\contentsline {section}{\numberline {6}Podsumowanie i wnioski}{19}{section.6}%
+\contentsline {section}{Literatura}{20}{section.6}%

@@ -1,0 +1,29 @@
+% !TEX root = ../praca_inzynierska.tex
+\section{Wstęp}
+\label{sec:wstep}
+
+\subsection{Motywacja i zarys problemu}
+\label{subsec:motywacja}
+
+Gry komputerowe od lat stanowią jedno z najważniejszych środowisk badawczych sztucznej inteligencji. Mają jasno określone reguły, mierzalny wynik i pozwalają przeprowadzić tysiące rozgrywek w czasie, w którym człowiek rozegrałby zaledwie kilka. Te cechy sprawiają, że gry dobrze nadają się do badania metod uczenia ze wzmocnieniem, w których agent uczy się strategii działania wyłącznie na podstawie nagród otrzymywanych za swoje decyzje \cite{sutton2018}.
+
+Przełomem w tej dziedzinie było opublikowanie w 2015 roku algorytmu Deep Q-Network (DQN). Agent DQN, otrzymując na wejściu jedynie obraz ekranu i wynik gry, nauczył się grać w 49 gier z konsoli Atari 2600 i w wielu z nich osiągnął poziom porównywalny z profesjonalnym graczem \cite{mnih2015}. Kluczowym pomysłem było połączenie klasycznego algorytmu Q-learning \cite{watkins1992} z głęboką siecią neuronową, która przybliża wartości akcji w stanach zbyt licznych, aby można je było zapisać w tablicy. Kolejne prace pokazały, że uczenie ze wzmocnieniem pozwala tworzyć agentów pokonujących mistrzów świata w wywodzącej się z Chin grze Go \cite{silver2016} oraz osiągających poziom najlepszych graczy w złożonej grze strategicznej czasu rzeczywistego StarCraft II \cite{vinyals2019}.
+
+Osiągnięcia te wymagały jednak ogromnych zasobów obliczeniowych, niedostępnych poza dużymi laboratoriami badawczymi. Aby samodzielnie zbadać działanie algorytmu DQN, potrzebne jest środowisko, które z jednej strony stawia agentowi rzeczywiste wyzwania, a z drugiej pozwala przeprowadzić trening na komputerze osobistym. Takim środowiskiem jest gra Snake. Jej reguły są proste: wąż porusza się po planszy, zjada pożywienie i rośnie, a gra kończy się w chwili zderzenia ze ścianą lub z własnym ciałem. Mimo to gra wymaga od agenta planowania kilku ruchów naprzód, unikania zagrożeń, które zmieniają się wraz z długością węża, oraz łączenia celu krótkoterminowego (zdobycie pożywienia) z długoterminowym (przetrwanie).
+
+Dodatkową motywacją do podjęcia tematu jest możliwość praktycznego sprawdzenia rozwiązań zaproponowanych w literaturze jako ulepszenia podstawowego algorytmu DQN, takich jak Double DQN \cite{vanhasselt2016}, oraz porównania własnej implementacji z dostępnymi rozwiązaniami bibliotecznymi.
+
+Grę Snake można rozwiązywać również bez uczenia, metodami klasycznego przeszukiwania. Algorytm A* \cite{hart1968} wyznacza najkrótszą ścieżkę od głowy węża do pożywienia, korzystając z pełnej wiedzy o planszy i heurystyki odległości. Zestawienie go z agentem DQN, który nie zna reguł gry i uczy się wyłącznie na podstawie nagród, pozwala ocenić, co zyskuje się, a co traci, zastępując zaprogramowaną strategię strategią wyuczoną.
+\subsection{Struktura pracy}
+\label{subsec:struktura}
+
+Praca składa się z sześciu rozdziałów. W rozdziale \ref{sec:rl-gry} przedstawiono podstawy teoretyczne uczenia ze wzmocnieniem oraz omówiono wykorzystanie tych metod w grach komputerowych. Rozdział \ref{sec:przeglad} zawiera przegląd algorytmów uczenia ze wzmocnieniem, klasycznych metod przeszukiwania i bibliotek programistycznych, zakończony uzasadnieniem wyboru algorytmu DQN. W rozdziale \ref{sec:projekt} opisano projekt systemu: środowisko gry, reprezentację stanu, funkcję nagrody i architekturę aplikacji. Rozdział \ref{sec:implementacja} poświęcono implementacji środowiska, sieci neuronowej, agenta i procesu uczenia.
+
+% Wyniki przeprowadzonych eksperymentów przedstawiono w rozdziale \ref{sec:wyniki}.
+Ostatni rozdział zawiera podsumowanie pracy i wnioski.
+
+\subsection{Cel i zakres pracy}
+\label{subsec:cel}
+
+Celem pracy było przedstawienie wykorzystania algorytmów uczenia ze wzmocnieniem w grach komputerowych, dokonanie przeglądu tych algorytmów oraz dostępnych rozwiązań bibliotecznych, a także implementacja algorytmu DQN do budowania strategii agenta gry Snake w języku Python, oraz porównanie go z agentem wykorzystującym algorytm przeszukiwania A*. Zakres pracy obejmował opracowanie środowiska gry w wersji graficznej i uproszczonej, przyspieszonej na potrzeby treningu, zaprojektowanie reprezentacji stanu i funkcji nagrody, implementację agenta DQN w wariancie Double DQN z wykorzystaniem biblioteki PyTorch oraz przygotowanie procesu uczenia z możliwością wykorzystania procesora graficznego.
+% Dopisać po decyzji promotora: „oraz ocenę skuteczności wytrenowanego agenta”.
